@@ -1,3 +1,10 @@
-build
 bin
 *.ppm
+
+## build
+
+/build/*
+
+## vscode
+
+.vscode/*

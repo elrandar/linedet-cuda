@@ -9,7 +9,7 @@ build:
   # instead of calling g++ directly you can also use some build toolkit like make
   # install the necessary build tools when needed
   before_script:
-     - apt update && apt -y install wget make autoconf cmake
+     - apt update && apt -y install wget make autoconf cmake libeigen3-dev
   script:
     - mkdir build && cd build
     - wget https://enulp.eu/media/files/out.ppm

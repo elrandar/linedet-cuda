@@ -2,13 +2,7 @@
 
 #include "segment.hpp"
 #include "image2d.hpp"
-// #include <mln/core/colors.hpp>
-// #include <mln/core/image/ndbuffer_image.hpp>
-// #include <mln/core/image/ndimage.hpp>
-// #include <mln/core/image/view/rgb.hpp>
-// #include <mln/io/imread.hpp>
 
-// #include <mln/morpho/erosion.hpp>
 #include <utility>
 
 namespace kalman

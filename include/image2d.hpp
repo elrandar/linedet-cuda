@@ -123,6 +123,16 @@ namespace kalman
             return buffer;
         }
 
+        void set_buffer(std::vector<T> b)
+        {
+            if (b.size() != height * width)
+                throw std::invalid_argument("The buffer should have the right size.");
+            for (int i = 0; i < b.size(); i++)
+            {
+                buffer[i] = b[i];
+            }
+        }
+
         void fill(T val)
         {
             for (auto &elm : buffer)

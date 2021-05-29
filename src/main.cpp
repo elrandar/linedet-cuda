@@ -2,10 +2,12 @@
 #include <string>
 #include <iostream>
 #include "ppm_parser.hh"
+#include "../include/filter.hpp"
 #include "../include/segdet.hpp"
 // #include "parse.hh"
 
 int main(int argc, char *argv[]){
+    using namespace kalman;
     char *filename;
     if (argc == 2)
         filename = argv[1];
@@ -14,7 +16,17 @@ int main(int argc, char *argv[]){
 
     kalman::image2d<uint8_t> img = parser.pgm(filename);
 
-    // kalman::detect_line(img, 10, 0);
+
+    auto out = kalman::detect_line(img, 10, 0);
+
+
+    auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
+
+    labeled_arr(lab_arr, out);
+
+    std::cout << "out";
+
+    lab_arr.imsave("out.pgm");
 
     // //Parse It
     // auto width = vec[0];

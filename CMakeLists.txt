@@ -7,16 +7,17 @@ enable_testing()
 find_package(Eigen3 REQUIRED NO_MODULE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kalman-gpu 
                 src/filter.cpp 
                 src/segdet.cpp
-                src/main.cpp
                 include/filter.hpp
                 include/linearregression.hpp
                 include/parameter.hpp
                 include/segdet.hpp
-                include/segment.hpp)
+                include/segment.hpp
+                src/main.cpp)
 
 target_link_libraries(kalman-gpu Eigen3::Eigen)
 

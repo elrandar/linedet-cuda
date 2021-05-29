@@ -6,7 +6,6 @@
 #include "../include/filter.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/segdet.hpp"
-#include "../include/image2d.hpp"
 
 
 namespace kalman
@@ -613,7 +612,7 @@ namespace kalman
    * @param x X position
    * @param y Y position
    */
-    void draw_labeled_pixel(image2d<uint16_t> img, uint16_t label, int x, int y)
+    void draw_labeled_pixel(image2d<uint16_t> &img, uint16_t label, int x, int y)
     {
         img({x, y}) = img({x, y}) != 0 ? 1 : label;
     }
@@ -625,7 +624,7 @@ namespace kalman
    * @param point Point to draw
    * @param is_horizontal
    */
-    void draw_labeled_point(image2d<uint16_t> img, uint16_t label, Point point, bool is_horizontal)
+    void draw_labeled_point(image2d<uint16_t> &img, uint16_t label, Point point, bool is_horizontal)
     {
         auto thickness = point.thickness / 2;
         auto is_odd = point.thickness % 2;
@@ -654,7 +653,7 @@ namespace kalman
         LABELING_TYPE_HORIZONTAL,
     };
 
-    void labeled_arr(image2d<uint16_t> out, const std::vector<Segment> &segments)
+    void labeled_arr(image2d<uint16_t> &out, const std::vector<Segment> &segments)
     {
         for (size_t i = 0; i < segments.size(); i++)
         {
@@ -842,7 +841,7 @@ namespace kalman
     // Public functions
 
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, uint min_len, uint discontinuity, const Parameters &params)
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, const Parameters &params)
     {
         // Preprocessing not done because its mathematical morphology, and we do not want to parallellize it
         // mln::ndbuffer_image preprocessed_img = preprocess(std::move(image));
@@ -859,7 +858,7 @@ namespace kalman
         return res;
     }
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, uint min_len, uint discontinuity)
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity)
     {
         return detect_line(image, min_len, discontinuity, Parameters());
     }

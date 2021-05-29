@@ -3,6 +3,7 @@
 #include "segment.hpp"
 #include <Eigen/Dense>
 #include <utility>
+#include <optional>
 #include <vector>
 
 #define SEGDET_NB_VALUES_TO_KEEP 30

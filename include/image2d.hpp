@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
+#include <sstream>
 #include <iostream>
+#include <fstream>
 
 namespace kalman
 {
@@ -23,10 +25,10 @@ namespace kalman
 
         T &access_elm(int x, int y)
         {
-            if (x >= height || y >= width)
+            if (x >= width || y >= height)
                 throw std::invalid_argument("Not in size of image lol");
 
-            return buffer[x * width + y];
+            return buffer[y * height + x];
         };
 
     public:
@@ -99,9 +101,9 @@ namespace kalman
         {
             auto out = std::vector<image_point>();
 
-            for (int i = 0; i < height; i++)
+            for (int i = 0; i < width; i++)
             {
-                for (int j = 0; j < width; j++)
+                for (int j = 0; j < height; j++)
                 {
                     out.push_back(image_point(i, j));
                 }
@@ -137,6 +139,27 @@ namespace kalman
         {
             for (auto &elm : buffer)
                 elm = val;
+        }
+
+        void imsave(std::string path)
+        {
+            std::ofstream ss;
+            ss.open(path);
+            ss  << "P2" << '\n'
+                << width << '\n'
+                << height << '\n'
+                << 255 << '\n';
+
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    auto val = buffer[width * i + j];
+                    ss << std::to_string(val) << "  ";
+                }
+                ss << '\n';
+            }
+            ss.close();
         }
 
         typedef T (*transform_func)(T);

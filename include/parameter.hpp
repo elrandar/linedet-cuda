@@ -5,12 +5,8 @@
 #include <map>
 #include <string>
 
-namespace mln
+namespace kalman
 {
-  namespace contrib
-  {
-    namespace segdet
-    {
       struct Parameters
       {
         Parameters()                  = default;
@@ -98,9 +94,7 @@ namespace mln
           return nb_values_to_keep > minimum_for_fusion && max_slopes_too_large < nb_values_to_keep;
         }
       };
-    } // namespace segdet
-  }   // namespace contrib
-} // namespace mln
+} // namespace kalman
 
 
 

@@ -1,22 +1,15 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
+#include <utility>
+
 #include "../include/filter.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/segdet.hpp"
 #include "../include/image2d.hpp"
-// #include <mln/core/algorithm/fill.hpp>
-// #include <mln/core/algorithm/transform.hpp>
-// #include <mln/core/image/view/transform.hpp>
-// #include <mln/core/neighborhood/c4.hpp>
-// #include <mln/core/se/rect2d.hpp>
-// #include <mln/io/imprint.hpp>
-// #include <mln/io/imsave.hpp>
-// #include <mln/morpho/closing.hpp>
-// #include <mln/morpho/reconstruction.hpp>
-#include <utility>
 
-namespace mln::contrib::segdet
+
+namespace kalman
 {
     /**
    * Give the value of the pixel in (n, t) according to traversal direction
@@ -31,6 +24,7 @@ namespace mln::contrib::segdet
         // TODO remove the check done by image.at(,) using image(,)
         return is_horizontal ? image.at({t, n}) : image.at({n, t});
     }
+
 
     /**
    * Determine the observation Matrix
@@ -80,13 +74,6 @@ namespace mln::contrib::segdet
 
         n_end++;
 
-        /*
-    uint32_t k = luminosities_list.size() - 1;
-    while (luminosities_list[k] > m_lum)
-      k--;
-    n_end = n_start + k + 1; // Plus one because the last pixel has to be included
-  */
-
         thickness = n_end - n;
         uint32_t position = n + thickness / 2;
 
@@ -96,11 +83,11 @@ namespace mln::contrib::segdet
             n_end--;
             position = n + thickness / 2;
         }
-        const double mean = mln::contrib::segdet::mean(luminosities_list, n - n_start, n_end - n_start);
+        const double mean_val = mean(luminosities_list, n - n_start, n_end - n_start);
 
         n = n_to_skip; // Setting reference value of n
 
-        return Eigen::Matrix<double, 3, 1>(position, thickness, mean);
+        return Eigen::Matrix<double, 3, 1>(position, thickness, mean_val);
     }
 
     /**
@@ -747,14 +734,17 @@ namespace mln::contrib::segdet
         // mln::fill(second_output, 0);
         labeled_arr(second_output, segments_to_compare, segments_removable, LABELING_TYPE_VERTICAL);
 
-        auto second_output_bin =
-            mln::view::transform(second_output, [](uint16_t p) -> uint8_t
-                                 { return (p != 0) ? 1 : 0; });
+        // auto second_output_bin =
+        //     mln::view::transform(second_output, [](uint16_t p) -> uint8_t
+        //                          { return (p != 0) ? 1 : 0; });
+
+        auto second_output_bin = second_output.copy().transform([](uint16_t p) -> uint16_t
+                                  { return (p != 0) ? 1 : 0; });
 
         binarize_img(first_output);
 
         image2d<uint16_t> intersection = image2d<uint16_t>(width, height);
-        mln::fill(intersection, 0);
+        intersection.fill(0);
 
         intersect(first_output, second_output, intersection);
 
@@ -763,8 +753,15 @@ namespace mln::contrib::segdet
         for (unsigned short &segment : segments)
             segment = 0;
 
-        mln_foreach(auto v, intersection.values())
+        // mln_foreach(auto v, intersection.values())
+        // {
+        //     if (v >= 3)
+        //         segments[v - 3]++;
+        // }
+
+        for (auto& p : intersection.domain())
         {
+            auto v = intersection(p); 
             if (v >= 3)
                 segments[v - 3]++;
         }
@@ -844,83 +841,26 @@ namespace mln::contrib::segdet
 
     // Public functions
 
-    mln::image2d<uint8_t> preprocess_img_grayscale(mln::image2d<uint8_t> input)
+
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, uint min_len, uint discontinuity, const Parameters &params)
     {
-        // 1. Negate
-        input = mln::transform(input, [](uint8_t p) -> uint8_t
-                               { return 255 - p; });
-
-        // 2. Get seeds
-        auto seeds = mln::transform(
-            input, [](uint8_t p) -> uint8_t
-            { return std::max(static_cast<int>(p - static_cast<int>(0.6 * 255)), 0); });
-
-        // 3. Create connectivity mask
-        auto connectivity_mask = mln::morpho::dilation(input, mln::se::rect2d{11, 11});
-
-        // 4. Reconstruction to get the background
-        auto out = mln::morpho::opening_by_reconstruction(connectivity_mask, seeds, mln::c4);
-        out = mln::transform(input, out, [](uint8_t a, uint8_t b) -> uint8_t
-                             { return std::min(a, b); });
-
-        // 5. Top hat
-        mln::transform(input, out, out, [](uint8_t a, uint8_t b) -> uint8_t
-                       { return 255 - (a - b); });
-
-        return out;
-    }
-
-    mln::image2d<uint8_t> preprocess_img_rgb(mln::image2d<mln::rgb8> img)
-    {
-
-        // Convert image to greyscale
-        mln::image2d<uint8_t> input = mln::transform(std::move(img), [](mln::rgb8 p) -> uint8_t
-                                                     {
-                                                         double r = p[0];
-                                                         double g = p[1];
-                                                         double b = p[2];
-                                                         return 0.2125 * r + 0.7154 * g + 0.0721 * b;
-                                                     });
-
-        return preprocess_img_grayscale(input);
-    }
-
-    mln::ndbuffer_image preprocess(mln::ndbuffer_image img)
-    {
-        mln::image2d<uint8_t> out;
-
-        switch (img.sample_type())
-        {
-        case mln::sample_type_id::UINT8:
-            out = mln::contrib::segdet::preprocess_img_grayscale(img.__cast<uint8_t, 2>());
-            break;
-        case mln::sample_type_id::RGB8:
-            out = mln::contrib::segdet::preprocess_img_rgb(img.__cast<mln::rgb8, 2>());
-            break;
-        default:;
-        }
-        return std::move(out);
-    }
-
-    std::vector<Segment> detect_line(mln::ndbuffer_image image, uint min_len, uint discontinuity, const Parameters &params)
-    {
-        // Preprocessing
-        mln::ndbuffer_image preprocessed_img = preprocess(std::move(image));
+        // Preprocessing not done because its mathematical morphology, and we do not want to parallellize it
+        // mln::ndbuffer_image preprocessed_img = preprocess(std::move(image));
 
         uint min_len_embryo = min_len / 4 + 1; // 5U < min_len ? 5U : min_len;
         // Processing
-        auto p = process(preprocessed_img.__cast<uint8_t, 2>(), min_len_embryo, discontinuity, params);
+        auto p = process(image, min_len_embryo, discontinuity, params);
 
         // Post Processing
-        post_process(p, preprocessed_img.size(0), preprocessed_img.size(1), params);
+        post_process(p, image.size(0), image.size(1), params);
 
         auto res = filter_length(p, min_len);
 
         return res;
     }
 
-    std::vector<Segment> detect_line(mln::ndbuffer_image image, uint min_len, uint discontinuity)
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, uint min_len, uint discontinuity)
     {
-        return detect_line(std::move(image), min_len, discontinuity, Parameters());
+        return detect_line(image, min_len, discontinuity, Parameters());
     }
 } // namespace mln::contrib::segdet

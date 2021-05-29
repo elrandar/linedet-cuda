@@ -13,7 +13,7 @@
 #define SEGDET_SIGMA_THK_MIN 0.64F
 #define SEGDET_SIGMA_LUM_MIN 13
 
-namespace mln::contrib::segdet
+namespace kalman
 {
 
   /**

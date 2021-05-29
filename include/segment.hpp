@@ -7,12 +7,8 @@
 #include <utility>
 #include <vector>
 
-namespace mln
+namespace kalman
 {
-  namespace contrib
-  {
-    namespace segdet
-    {
       struct Point
       {
         Point(u_int32_t x, u_int32_t y, u_int32_t size)
@@ -78,6 +74,4 @@ namespace mln
         u_int32_t nb_pixels;
         bool      is_horizontal;
       };
-    } // namespace segdet
-  }   // namespace contrib
 } // namespace mln

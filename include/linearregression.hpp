@@ -4,7 +4,7 @@
 #include <numeric>
 #include <vector>
 
-namespace mln::contrib::segdet
+namespace kalman
 {
   template <typename T>
   double mean(std::vector<T> array, size_t start, size_t end)

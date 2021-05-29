@@ -15,7 +15,7 @@
 #define SEGDET_DEFAULT_SIGMA_THK 2
 #define SEGDET_DEFAULT_SIGMA_LUM 57
 
-namespace mln::contrib::segdet
+namespace kalman
 {
   /**
    * The Observation class holds an observation matrix, the t-position at which it was matched, and the number of times

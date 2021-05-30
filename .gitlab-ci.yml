@@ -5,7 +5,8 @@
 image: gcc
 
 stages:
-  - bench
+  - build
+  - benchmark
 
 build:
   stage: build
@@ -24,8 +25,7 @@ build:
 # run tests using the binary built before
 benchmark:
   stage: benchmark
+  dependencies: [build]
   script:
     - wget https://enulp.eu/media/files/out.ppm
     - time ./kalman out.ppm
-  dependencies:
-    - build

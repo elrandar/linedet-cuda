@@ -52,7 +52,6 @@ namespace kalman {
             }
             myfile.close();
 
-            std::cout << "Width : " << width << " height : " << height << "\nsize of buffer: " << vec.size();
             auto output_image = image2d<uint8_t>(width, height);
             output_image.set_buffer(vec);
 

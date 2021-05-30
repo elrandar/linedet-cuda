@@ -24,5 +24,6 @@ benchmark:
   stage: benchmark
   dependencies: [build]
   script:
+    - ls -R
     - wget https://enulp.eu/media/files/out.ppm
     - time ./build/kalman out.ppm

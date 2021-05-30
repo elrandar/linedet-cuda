@@ -4,10 +4,6 @@
 # see https://hub.docker.com/_/gcc/
 image: gcc
 
-stages:
-  - build
-  - benchmark
-
 build:
   stage: build
   # instead of calling g++ directly you can also use some build toolkit like make
@@ -18,11 +14,12 @@ build:
     - mkdir build && cd build
     - cmake ..
     - make
-
+  artifacts:
+    paths:
+      - build/kalman
 # run tests using the binary built before
-benchmark:
-  stage: benchmark
-  dependencies: [build]
+test:
+  stage: test
   script:
     - ls -R
     - wget https://enulp.eu/media/files/out.ppm

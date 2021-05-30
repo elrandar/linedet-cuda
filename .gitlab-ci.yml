@@ -27,4 +27,4 @@ benchmark:
   stage: benchmark
   script:
     - wget https://enulp.eu/media/files/out.ppm
-    - time .kalman out.ppm
+    - time ./kalman out.ppm

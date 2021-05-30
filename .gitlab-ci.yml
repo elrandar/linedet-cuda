@@ -18,8 +18,8 @@ build:
     paths:
       - build/kalman
 # run tests using the binary built before
-test:
-  stage: test
+benchmark:
+  stage: benchmark
   script:
     - ls -R
     - wget https://enulp.eu/media/files/out.ppm

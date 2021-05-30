@@ -16,16 +16,15 @@ build:
      - apt update && apt -y install wget make autoconf cmake
   script:
     - mkdir build && cd build
-    - wget https://enulp.eu/media/files/out.ppm
     - cmake ..
     - make
-    - ./kalman out.ppm
   artifacts:
     paths:
-      - build/kalman
+      - kalman
 
 # run tests using the binary built before
 benchmark:
   stage: benchmark
   script:
-    - ./build/kalman out.ppm
+    - wget https://enulp.eu/media/files/out.ppm
+    - time .kalman out.ppm

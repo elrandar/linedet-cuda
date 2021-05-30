@@ -4,7 +4,12 @@ bin
 ## build
 
 /build/*
+/cmake-build*
 
 ## vscode
 
 .vscode/*
+
+## jetbrains
+
+.idea/

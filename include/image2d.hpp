@@ -28,7 +28,7 @@ namespace kalman
             if (x >= width || y >= height)
                 throw std::invalid_argument("Not in size of image lol");
 
-            return buffer[y * height + x];
+            return buffer[y * width + x];
         };
 
     public:

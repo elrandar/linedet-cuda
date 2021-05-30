@@ -4,10 +4,6 @@
 # see https://hub.docker.com/_/gcc/
 image: gcc
 
-stages:
-  - build
-  - benchmark
-
 build:
   stage: build
   # instead of calling g++ directly you can also use some build toolkit like make
@@ -28,3 +24,5 @@ benchmark:
   script:
     - wget https://enulp.eu/media/files/out.ppm
     - time ./kalman out.ppm
+  dependencies:
+    - build

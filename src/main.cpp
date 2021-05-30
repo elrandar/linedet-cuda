@@ -23,9 +23,7 @@ int main(int argc, char *argv[]){
     auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
 
     labeled_arr(lab_arr, out);
-
-    std::cout << "out";
-
+    std::cout << std::endl;
     lab_arr.imsave("out.pgm");
 
     // //Parse It

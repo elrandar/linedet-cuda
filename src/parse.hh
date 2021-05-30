@@ -3,10 +3,10 @@
 namespace kalman {
     class parser {
         public:
-            vector<vector<pair<int, int>>> parse(int width, int height, vector<int> img, int threshold) {
-                vector<vector<pair<int, int>>> vec;
-                for(int j = 0; j < width * 3; j+=3){
-                    vector<pair<int, int>> tmp_vec;
+            std::vector<std::vector<std::pair<int, int>>> parse(int width, int height, std::vector<u_int8_t> img, int threshold) {
+                std::vector<std::vector<std::pair<int, int>>> vec;
+                for(int j = 0; j < width; j++){
+                    std::vector<std::pair<int, int>> tmp_vec;
                     auto max = -1;
                     //auto pos_max = -1;
                     auto start = -1;

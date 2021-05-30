@@ -9,13 +9,14 @@ build:
   # instead of calling g++ directly you can also use some build toolkit like make
   # install the necessary build tools when needed
   before_script:
-     - apt update && apt -y install wget make autoconf cmake libeigen3-dev
+     - apt update && apt -y install wget make autoconf cmake libeigen3-dev imagemagick
   script:
     - mkdir build && cd build
     - wget https://enulp.eu/media/files/out.ppm
+    - convert out.ppm -colorspace Gray -compress none input.pgm
     - cmake ..
     - make
-    - ./kalman out.ppm
+    - ./kalman-gpu --parallel input.pgm
 
 # run tests using the binary built before
 #test:

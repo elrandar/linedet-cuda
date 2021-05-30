@@ -20,7 +20,7 @@ build:
     - make
   artifacts:
     paths:
-      - kalman
+      - build/kalman
 
 # run tests using the binary built before
 benchmark:

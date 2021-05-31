@@ -29,6 +29,13 @@ Le programme s'utilise de la façon suivante :
 
 **Modes :**
 
-- `--gpu`     active le mode parallèle gpu
-- `--parallel` active le mode parallèle cpu (pour l'instant une partie du process ayant été fait par johan)
-- `--sequential` active le mode sequentiel, qui est en fait le process qu'on a actuellement de notre côté.
+- `--gpu`     active le mode parallèle GPU
+- `--batch` active le mode batch CPU
+- `--sequential` active le mode séquentiel CPU
+
+La sortie est une image de labels au format .PGM dans le fichier `out.pgm`.\
+Pour colorer chaque label d'une couleur différente, on peut utiliser le script fourni :
+
+```
+python3 output_to_rgb.py <out_img>
+```

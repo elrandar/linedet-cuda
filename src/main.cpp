@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
-#include "ppm_parser.hh"
+#include "../include/ppm_parser.hh"
 #include "../include/filter.hpp"
 #include "../include/segdet.hpp"
-#include "parse.hh"
-// #include "parse.hh"
+#include "../include/observation_parser.hh"
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[])
+{
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";
@@ -21,6 +21,11 @@ int main(int argc, char *argv[]){
         mode = argv[1];
         filename = argv[2];
     }
+    else
+    {
+        std::cout << "Usage :\n kalman-gpu --[gpu / sequential / parallel] <img>\n";
+        return 0;
+    }
 
 
     //READ ppm file into image
@@ -28,11 +33,12 @@ int main(int argc, char *argv[]){
 
     kalman::image2d<uint8_t> img = parser.pgm(filename);
 
+
     if (mode == "--sequential")
     {
         std::cout << "Processing Image Sequentially\n";
         // Sequential Line detection
-        auto out = kalman::detect_line(img, 10, 0);
+        auto out = kalman::detect_line(img, 10, 0, "seq");
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
@@ -41,71 +47,26 @@ int main(int argc, char *argv[]){
         // Output
         lab_arr.imsave("out.pgm");
     }
-    else
+    else if (mode == "--batch")
     {
-        if (mode == "--parallel")
-        {
-            std::cout << "Processing Image in parallel, using CPU\n";
+        std::cout << "Processing Image in batches, using CPU\n";
 
-            kalman::parser parser;
-            auto parsed_vec = parser.parse(img.width, img.height, img.get_buffer(), 245);
-            for (std::vector<std::pair<int, int>> vec: parsed_vec)
-            {
-                for (std::pair<int, int> pair: vec)
-                {
-                    std::cout << pair.first << "-" << pair.second << "  ";
-                }
-                std::cout << "\n";
-            }
-        }
-        else if (mode == "--gpu")
-        {
-            std::cout << "Processing Image in parallel, using GPU\n";
-        }
-        else
-        {
-            throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
-        }
+        auto out = kalman::detect_line(img, 10, 0, "batch");
+
+        // Image labellisation
+        auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
+        labeled_arr(lab_arr, out);
+    
+        // Output
+        lab_arr.imsave("out.pgm");
     }
+    else if (mode == "--gpu")
+    {
+        std::cout << "Processing Image in parallel, using GPU\n";
+    }
+    else
+        throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
+
+    
     return 0;
 }
-
-
-// #include <iostream>
-// #include "../include/filter.hpp"
-// #include "../include/image2d.hpp"
-// #include "../include/segdet.hpp"
-
-
-
-
-// int main(int argc, char** argv)
-// {
-//     using namespace kalman;
-//     auto img = image2d<int>(    {{1, 2, 3, 4},
-//                                 {5, 6, 7, 8},
-//                                 {7, 8, 9, 10}});
-    
-//     std::cout << img << "\nimg[1, 2] = " << img({1, 2}) << "\n";
-//     img({1, 1}) = 42;
-
-//     image_point pt = image_point(2, 2);
-//     img(pt) = 69;
-
-//     std::cout << img;
-
-//     // for (auto elm : img.domain())
-//     //     std::cout << elm << ";";
-
-
-//     img.transform([](int value){ return value + 1;});
-
-//     std::cout << img;
-
-//     img.fill(42);
-//     std::cout << img;
-
-
-
-//     return 0;
-// }

@@ -16,7 +16,7 @@ build:
     - convert out.ppm -colorspace Gray -compress none input.pgm
     - cmake ..
     - make
-    - ./kalman-gpu --parallel input.pgm
+    - ./kalman-gpu --batch input.pgm
 
 # run tests using the binary built before
 #test:

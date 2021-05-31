@@ -1,7 +1,7 @@
 #include <vector>
 
 namespace kalman {
-    class parser {
+    class obs_parser {
         public:
             std::vector<std::vector<std::pair<int, int>>> parse(int width, int height, std::vector<u_int8_t> img, int threshold) {
                 std::vector<std::vector<std::pair<int, int>>> vec;
@@ -10,36 +10,24 @@ namespace kalman {
                     auto max = -1;
                     //auto pos_max = -1;
                     auto start = -1;
-                    auto previous = false;
+                    auto in_obs = false;
                     for(int i = 0; i < height; i++) {
                         if (img[i * width + j] < threshold) {
-                            if (previous) {
-                                if (img[i * width + j] > max) {
-                                    max = img[i * width + j];
-                                    //pos_max = i;
-                                }
+                            if (img[i * width + j] > max) {
+                                max = img[i * width + j];
                             }
-                            else {
+                            if (!in_obs) {
                                 start = i;
-                                previous = true;
+                                in_obs = true;
                             }
                         }
                         else {
                             if (max != -1) {
-                                /*
-                                 * method not suitable for big lines
-                                if (pos_max - start  < i) {
-                                    tmp_vec.push_back({pos_max, pos_max - start});
-                                }
-                                else {
-                                    tmp_vec.push_back({pos_max, i - pos_max});
-                                }
-                                */
                                 tmp_vec.push_back({(start + i) / 2, i - start});
                             }
                             max = -1;
                             //pos_max = -1;
-                            previous = false;
+                            in_obs = false;
                         }
                     }
                     if (max != -1)

@@ -153,7 +153,6 @@ namespace kalman
                 << width << '\n'
                 << height << '\n'
                 << size << '\n';
-            std::cout << (sizeof(T));
 
             for (int i = 0; i < height; i++)
             {

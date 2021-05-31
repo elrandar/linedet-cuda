@@ -47,9 +47,9 @@ int main(int argc, char *argv[])
         // Output
         lab_arr.imsave("out.pgm");
     }
-    else if (mode == "--parallel")
+    else if (mode == "--batch")
     {
-        std::cout << "Processing Image in parallel, using CPU\n";
+        std::cout << "Processing Image in batches, using CPU\n";
 
         auto out = kalman::detect_line(img, 10, 0, "batch");
 

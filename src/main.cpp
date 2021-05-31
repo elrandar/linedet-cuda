@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
-#include "ppm_parser.hh"
+#include "../include/ppm_parser.hh"
 #include "../include/filter.hpp"
 #include "../include/segdet.hpp"
-#include "parse.hh"
+#include "../include/observation_parser.hh"
 // #include "parse.hh"
 
 int main(int argc, char *argv[])
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
         {
             std::cout << "Processing Image in parallel, using CPU\n";
 
-            kalman::parser parser;
+            kalman::obs_parser parser;
             auto parsed_vec = parser.parse(img.width, img.height, img.get_buffer(), 225);
             for (std::vector<std::pair<int, int>> vec: parsed_vec)
             {

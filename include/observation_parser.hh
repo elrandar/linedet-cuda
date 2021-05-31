@@ -1,7 +1,7 @@
 #include <vector>
 
 namespace kalman {
-    class parser {
+    class obs_parser {
         public:
             std::vector<std::vector<std::pair<int, int>>> parse(int width, int height, std::vector<u_int8_t> img, int threshold) {
                 std::vector<std::vector<std::pair<int, int>>> vec;

@@ -5,7 +5,6 @@
 #include "../include/filter.hpp"
 #include "../include/segdet.hpp"
 #include "../include/observation_parser.hh"
-// #include "parse.hh"
 
 int main(int argc, char *argv[])
 {
@@ -48,40 +47,26 @@ int main(int argc, char *argv[])
         // Output
         lab_arr.imsave("out.pgm");
     }
-    else
+    else if (mode == "--parallel")
     {
-        if (mode == "--parallel")
-        {
-            std::cout << "Processing Image in parallel, using CPU\n";
+        std::cout << "Processing Image in parallel, using CPU\n";
 
-            auto out = kalman::detect_line(img, 10, 0, "batch");
+        auto out = kalman::detect_line(img, 10, 0, "batch");
 
-            // Image labellisation
-            auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
-            labeled_arr(lab_arr, out);
-        
-            // Output
-            lab_arr.imsave("out.pgm");
-
-            // kalman::obs_parser parser;
-            // auto parsed_vec = parser.parse(img.width, img.height, img.get_buffer(), 225);
-            // for (std::vector<std::pair<int, int>> vec: parsed_vec)
-            // {
-            //     for (std::pair<int, int> pair: vec)
-            //     {
-            //         std::cout << pair.first << "-" << pair.second << "  ";
-            //     }
-            //     std::cout << "\n";
-            // }
-        }
-        else if (mode == "--gpu")
-        {
-            std::cout << "Processing Image in parallel, using GPU\n";
-        }
-        else
-        {
-            throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
-        }
+        // Image labellisation
+        auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
+        labeled_arr(lab_arr, out);
+    
+        // Output
+        lab_arr.imsave("out.pgm");
     }
+    else if (mode == "--gpu")
+    {
+        std::cout << "Processing Image in parallel, using GPU\n";
+    }
+    else
+        throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
+
+    
     return 0;
 }

@@ -447,8 +447,8 @@ namespace kalman
             filters.push_back(f);
     }
 
-    std::vector<Segment> traversal(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
-                                   uint discontinuity, Parameters params, std::string mode)
+    std::vector<Segment> traversal_batch(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
+                                   uint discontinuity, Parameters params)
     {
         // Usefull parameter used in the function
         uint32_t xmult, ymult;
@@ -467,18 +467,75 @@ namespace kalman
 
         std::vector<std::vector<std::pair<int, int>>> observations;
 
-        if (mode == "batch")
+        auto p = obs_parser();
+        if (!is_horizontal)
         {
-            auto p = obs_parser();
-            if (!is_horizontal)
-            {
-                auto tr_image = image.copy();
-                tr_image.transpose();
-                observations = p.parse(tr_image.width, tr_image.height, tr_image.get_buffer_const(), params.max_llum);
-            }
-            else
-                observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
+            auto tr_image = image.copy();
+            tr_image.transpose();
+            observations = p.parse(tr_image.width, tr_image.height, tr_image.get_buffer_const(), params.max_llum);
         }
+        else
+            observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
+        
+        for (uint32_t t = 0; t < t_max; t++)
+        {
+            for (auto &filter : filters)
+                predict(filter);
+
+            new_filters.clear();
+            bool two_matches_through_n = false;
+            uint32_t filter_index = 0;
+
+        
+            for (auto& vec_obs : observations[t])
+            {
+                Eigen::Matrix<double, 3, 1> obs = Eigen::Vector3d({(double) vec_obs.first, (double) vec_obs.second, (double) 200.0});
+
+                std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
+                find_match(filters, accepted, obs, t, filter_index, params);
+                if (accepted.empty() && obs(1, 0) < params.max_thickness)
+                    new_filters.emplace_back(is_horizontal, t, slope_max, obs);
+                else
+                    two_matches_through_n =
+                        handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
+            }
+            
+
+            if (two_matches_through_n)
+                two_matches++;
+            else
+                two_matches = 0;
+
+            // Selection for next turn
+            selection = filter_selection(filters, segments, t, two_matches, min_len_embryo, discontinuity, params);
+            // Merge selection and new_filters in filters
+            update_current_filters(filters, selection, new_filters);
+        }
+
+        to_thrash(filters, segments, min_len_embryo, params);
+
+        return segments;
+    }
+
+    std::vector<Segment> traversal(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
+                                   uint discontinuity, Parameters params)
+    {
+        // Usefull parameter used in the function
+        uint32_t xmult, ymult;
+        double slope_max;
+        uint32_t n_max, t_max;
+
+        set_parameters(is_horizontal, xmult, ymult, slope_max, n_max, t_max, image.size(), image.size(1), params);
+
+        auto filters = std::vector<Filter>();   // List of current filters
+        auto segments = std::vector<Segment>(); // List of current segments
+        std::vector<Filter> new_filters{};
+        std::vector<Filter> selection{};
+
+        uint32_t two_matches = 0; // Number of t where two segments matched the same observation
+        // Useful to NOT check if filters has to be merged
+
+        std::vector<std::vector<std::pair<int, int>>> observations;
 
         for (uint32_t t = 0; t < t_max; t++)
         {
@@ -489,13 +546,12 @@ namespace kalman
             bool two_matches_through_n = false;
             uint32_t filter_index = 0;
 
-            if (mode == "batch")
-            {
-                for (auto& vec_obs : observations[t])
-                {
 
-                    // Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
-                    Eigen::Matrix<double, 3, 1> obs = Eigen::Vector3d({(double) vec_obs.first, (double) vec_obs.second, (double) 200.0});
+            for (uint32_t n = 0; n < n_max; n++)
+            {
+                if (image_at(image, n, t, is_horizontal) < params.max_llum)
+                {
+                    Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
 
                     std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
                     find_match(filters, accepted, obs, t, filter_index, params);
@@ -506,25 +562,7 @@ namespace kalman
                             handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
                 }
             }
-            else
-            {
-                for (uint32_t n = 0; n < n_max; n++)
-                {
-                    if (image_at(image, n, t, is_horizontal) < params.max_llum)
-                    {
-                        Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
-
-                        std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
-                        find_match(filters, accepted, obs, t, filter_index, params);
-                        if (accepted.empty() && obs(1, 0) < params.max_thickness)
-                            new_filters.emplace_back(is_horizontal, t, slope_max, obs);
-                        else
-                            two_matches_through_n =
-                                handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
-                    }
-                }
-            }
-
+            
             if (two_matches_through_n)
                 two_matches++;
             else
@@ -844,11 +882,23 @@ namespace kalman
    * @return Pair (horizontal segments,vertical segments)
    */
     std::pair<std::vector<Segment>, std::vector<Segment>> process(const image2d<uint8_t> &image, uint min_len_embryo,
-                                                                  uint discontinuity, Parameters params, std::string mode)
+                                                                  uint discontinuity, Parameters params, const std::string& mode)
     {
         // TODO Multi threading, splitter l'image
-        std::vector<Segment> horizontal_segments = traversal(image, true, min_len_embryo, discontinuity, params, mode);
-        std::vector<Segment> vertical_segments = traversal(image, false, min_len_embryo, discontinuity, params, mode);
+        std::vector<Segment> horizontal_segments;
+        std::vector<Segment> vertical_segments;
+
+        if (mode == "batch")
+        {
+            horizontal_segments = traversal_batch(image, true, min_len_embryo, discontinuity, params);
+            vertical_segments = traversal_batch(image, false, min_len_embryo, discontinuity, params);
+        }
+        else
+        {
+            horizontal_segments = traversal(image, true, min_len_embryo, discontinuity, params);
+            vertical_segments = traversal(image, false, min_len_embryo, discontinuity, params);
+        }
+
 
         return std::make_pair(horizontal_segments, vertical_segments);
     }
@@ -874,7 +924,7 @@ namespace kalman
     // Public functions
 
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, const Parameters &params, std::string mode)
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, const Parameters &params, const std::string& mode)
     {
         // Preprocessing not done because its mathematical morphology, and we do not want to parallellize it
         // mln::ndbuffer_image preprocessed_img = preprocess(std::move(image));
@@ -891,7 +941,7 @@ namespace kalman
         return res;
     }
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, std::string mode)
+    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, const std::string& mode)
     {
         return detect_line(image, min_len, discontinuity, Parameters(), mode);
     }

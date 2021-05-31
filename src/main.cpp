@@ -34,11 +34,12 @@ int main(int argc, char *argv[])
 
     kalman::image2d<uint8_t> img = parser.pgm(filename);
 
+
     if (mode == "--sequential")
     {
         std::cout << "Processing Image Sequentially\n";
         // Sequential Line detection
-        auto out = kalman::detect_line(img, 10, 0);
+        auto out = kalman::detect_line(img, 10, 0, "seq");
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
@@ -53,16 +54,25 @@ int main(int argc, char *argv[])
         {
             std::cout << "Processing Image in parallel, using CPU\n";
 
-            kalman::obs_parser parser;
-            auto parsed_vec = parser.parse(img.width, img.height, img.get_buffer(), 225);
-            for (std::vector<std::pair<int, int>> vec: parsed_vec)
-            {
-                for (std::pair<int, int> pair: vec)
-                {
-                    std::cout << pair.first << "-" << pair.second << "  ";
-                }
-                std::cout << "\n";
-            }
+            auto out = kalman::detect_line(img, 10, 0, "batch");
+
+            // Image labellisation
+            auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
+            labeled_arr(lab_arr, out);
+        
+            // Output
+            lab_arr.imsave("out.pgm");
+
+            // kalman::obs_parser parser;
+            // auto parsed_vec = parser.parse(img.width, img.height, img.get_buffer(), 225);
+            // for (std::vector<std::pair<int, int>> vec: parsed_vec)
+            // {
+            //     for (std::pair<int, int> pair: vec)
+            //     {
+            //         std::cout << pair.first << "-" << pair.second << "  ";
+            //     }
+            //     std::cout << "\n";
+            // }
         }
         else if (mode == "--gpu")
         {

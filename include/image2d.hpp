@@ -85,10 +85,10 @@ namespace kalman
                 return height;
         }
 
-        image2d<T> copy()
+        image2d<T> copy() const
         {
             auto out = image2d(width, height);
-            auto out_buf = out.get_buffer();
+            auto& out_buf = out.get_buffer();
 
             for (int i = 0; i < buffer.size(); i++)
             {
@@ -170,15 +170,28 @@ namespace kalman
                 elm = fun(elm);
             return *this;
         }
+
+        image2d<T>& transpose()
+        {
+            std::vector<T> new_buffer(buffer.capacity());
+
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    new_buffer[i * height + j] = buffer[j * width + i];
+                }
+            }
+
+            buffer = new_buffer;
+
+            // Swap height and width
+            auto tmp = height;
+            height = width;
+            width = tmp;
+            return *this;
+        }
     };
-
-    template <typename T>
-    using transform_2_func = T (*)(T, T);
-
-    template <typename T>
-    image2d<T> &transform(image2d<T> in_1, image2d<T> in_2, image2d<T> out, transform_2_func<T> f)
-    {
-    }
 
     template <typename T>
     std::ostream &operator<<(std::ostream &out, const image2d<T> &img)

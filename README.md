@@ -32,3 +32,10 @@ Le programme s'utilise de la façon suivante :
 - `--gpu`     active le mode parallèle gpu
 - `--parallel` active le mode parallèle cpu (pour l'instant une partie du process ayant été fait par johan)
 - `--sequential` active le mode sequentiel, qui est en fait le process qu'on a actuellement de notre côté.
+
+La sortie est une image de labels.
+Pour colorer chaque label d'une couleur différente, on peut utiliser le script fourni :
+
+```
+python3 output_to_rgb.py <out_img>
+```

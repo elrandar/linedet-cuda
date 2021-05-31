@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 namespace kalman
 {
@@ -145,10 +146,14 @@ namespace kalman
         {
             std::ofstream ss;
             ss.open(path);
+
+            int size = std::pow(2, sizeof(T) * 8) - 1;
+
             ss  << "P2" << '\n'
                 << width << '\n'
                 << height << '\n'
-                << 255 << '\n';
+                << size << '\n';
+            std::cout << (sizeof(T));
 
             for (int i = 0; i < height; i++)
             {

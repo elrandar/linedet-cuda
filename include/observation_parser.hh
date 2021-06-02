@@ -1,12 +1,15 @@
+#pragma once
+
 #include <vector>
+#include <Eigen/Dense>
 
 namespace kalman {
     class obs_parser {
         public:
-            std::vector<std::vector<std::pair<int, int>>> parse(int width, int height, std::vector<u_int8_t> img, int threshold) {
-                std::vector<std::vector<std::pair<int, int>>> vec;
+            std::vector<std::vector<Eigen::Vector3d>> parse(int width, int height, std::vector<u_int8_t> img, int threshold) {
+                std::vector<std::vector<Eigen::Vector3d>> vec;
                 for(int j = 0; j < width; j++){
-                    std::vector<std::pair<int, int>> tmp_vec;
+                    std::vector<Eigen::Vector3d> tmp_vec;
                     auto max = -1;
                     //auto pos_max = -1;
                     auto start = -1;
@@ -23,7 +26,9 @@ namespace kalman {
                         }
                         else {
                             if (max != -1) {
-                                tmp_vec.push_back({(start + i) / 2, i - start});
+                                tmp_vec.push_back({static_cast<double>((start + i) / 2),
+                                                   static_cast<double>(i - start),
+                                                   static_cast<double>(max)});
                             }
                             max = -1;
                             //pos_max = -1;
@@ -31,7 +36,9 @@ namespace kalman {
                         }
                     }
                     if (max != -1)
-                        tmp_vec.push_back({(start + height) / 2, height - start});
+                        tmp_vec.push_back({static_cast<double>((start + height) / 2),
+                                           static_cast<double>(height - start),
+                                           static_cast<double>(max)});
                     vec.push_back(tmp_vec);
                 }
                 return vec;

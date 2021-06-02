@@ -465,7 +465,7 @@ namespace kalman
         uint32_t two_matches = 0; // Number of t where two segments matched the same observation
         // Useful to NOT check if filters has to be merged
 
-        std::vector<std::vector<std::pair<int, int>>> observations;
+        std::vector<std::vector<Eigen::Vector3d>> observations;
 
         auto p = obs_parser();
         if (!is_horizontal)
@@ -486,20 +486,19 @@ namespace kalman
             bool two_matches_through_n = false;
             uint32_t filter_index = 0;
 
-        
-            for (auto& vec_obs : observations[t])
-            {
-                Eigen::Matrix<double, 3, 1> obs = Eigen::Vector3d({(double) vec_obs.first, (double) vec_obs.second, (double) 200.0});
 
+            for (auto &obs : observations[t])
+            {
                 std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
                 find_match(filters, accepted, obs, t, filter_index, params);
                 if (accepted.empty() && obs(1, 0) < params.max_thickness)
                     new_filters.emplace_back(is_horizontal, t, slope_max, obs);
                 else
                     two_matches_through_n =
-                        handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
+                            handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) ||
+                            two_matches_through_n;
             }
-            
+
 
             if (two_matches_through_n)
                 two_matches++;

@@ -1,16 +1,17 @@
-
 #include <Eigen/Dense>
 #include <algorithm>
 #include <utility>
 
-#include "../include/filter.hpp"
+#include "../include/filter_batch.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/observation_parser.hh"
-#include "../include/segdet.hpp"
+#include "../include/segdet_batch.hpp"
 
 
-namespace kalman
+namespace kalman_batch
 {
+    using namespace kalman;
+
     /**
    * Give the value of the pixel in (n, t) according to traversal direction
    * @param image Image to take pixel from
@@ -122,9 +123,9 @@ namespace kalman
    * @param t Current t
    * @param index Current index in n column
    */
-    void
-    find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const Eigen::Matrix<double, 3, 1> &obs,
-               const uint32_t &t, uint32_t &index, Parameters params)
+    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted,
+                    const Eigen::Matrix<double, 3, 1> &obs,
+                    const uint32_t &t, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
         uint32_t obs_thick_d2 = obs_thick / 2;
@@ -137,27 +138,23 @@ namespace kalman
 
         // Only checking the acceptation for near predictions
         //    while (index < filters.size() && filters[index].X_predicted(0, 0) - obs_n_max < 10)
-        index = 0;
+        size_t index = 0;
         while (index < filters.size())
         {
             Filter &f = filters[index];
             if (accepts(f, obs, obs_n_min, obs_n_max, params))
                 accepted.push_back(&f);
-            else if (f.observation == std::nullopt && in_between(obs_n_min, f.n_min, obs_n_max) &&
-                     in_between(obs_n_min, f.n_max, obs_n_max) && f.X_predicted(1, 0) < obs_thick)
-            {
-                add_point_under_other(f, t, round(f.X_predicted(0, 0)), round(f.X_predicted(1, 0)));
-            }
+            // if it is not accepted by the filter, but it is still close, we add
+            // it to the list "under_other" of the filter.
+            // Since we are no longer working directly with observations here, but with full sized filters, this code
+            // makes little sense.
+//            else if (f.observation == std::nullopt && in_between(obs_n_min, f.n_min, obs_n_max) &&
+//                     in_between(obs_n_min, f.n_max, obs_n_max) && f.X_predicted(1, 0) < obs_thick)
+//            {
+//                add_point_under_other(f, t, round(f.X_predicted(0, 0)), round(f.X_predicted(1, 0)));
+//            }
             index++;
         }
-
-        // Check the overflow
-        if (index == filters.size() && !filters.empty())
-            index--;
-
-        // Go back with index
-        while (index > 0 && filters[index].X_predicted(0, 0) - obs_n_min > 0)
-            index--;
     }
 
     /**
@@ -249,7 +246,7 @@ namespace kalman
         while (j < filters.size())
         {
             auto fj = filters[j];
-            if (fj.observation != std::nullopt && same_observation(f, fj, params))
+            if (fj.filter_to_merge != std::nullopt && same_observation(f, fj, params))
             {
                 if (f.first < fj.first)
                     erase_filter(filters, segments, min_len, j, fj, params);
@@ -312,30 +309,30 @@ namespace kalman
         {
             auto f = filters[index];
 
-            if (f.observation != std::nullopt)
+            if (f.filter_to_merge != std::nullopt)
             {
-                if (two_matches > params.minimum_for_fusion &&
-                    make_potential_fusion(filters, index, segments, min_len_embryo, params))
-                    continue;
-
-                integrate(f, t, params);
+//                if (two_matches > params.minimum_for_fusion &&
+//                    make_potential_fusion(filters, index, segments, min_len_embryo, params))
+//                    continue;
+                merge(f, *f.filter_to_merge.value(), t, params);
+//                integrate(f, t, params);
                 compute_sigmas(f, params);
 
-                if (f.nb_current_slopes_over_slope_max > params.max_slopes_too_large)
-                {
-                    if (f.last_integration - f.first - params.max_slopes_too_large > min_len_embryo)
-                        segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
-                    index++;
-                    continue;
-                }
+//                if (f.nb_current_slopes_over_slope_max > params.max_slopes_too_large)
+//                {
+//                    if (f.last_integration - f.first - params.max_slopes_too_large > min_len_embryo)
+//                        segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
+//                    index++;
+//                    continue;
+//                }
 
                 filters_to_keep.push_back(f);
-            } else if (filter_has_to_continue(f, t, discontinuity))
+            } else
             {
-                f.S = f.S_predicted;
                 filters_to_keep.push_back(f);
-            } else if (f.last_integration - f.first > min_len_embryo)
-                segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
+            }
+//            else if (f.last_integration - f.first > min_len_embryo)
+//                segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
 
             index++;
         }
@@ -407,25 +404,29 @@ namespace kalman
    * @return
    */
     bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
-                            const Eigen::Matrix<double, 3, 1> &obs, uint32_t &t, bool is_horizontal, double slope_max)
+                            Filter &right_filter, uint32_t &t, bool is_horizontal, double slope_max)
     {
-        auto observation_s = Observation(obs, accepted.size(), t);
+        auto & obs = right_filter.first_obs.obs;
+
+        right_filter.first_obs = Observation(obs, accepted.size(), t);
 
         for (auto &f : accepted)
         {
-            auto obs_result = choose_nearest(*f, observation_s);
+            auto filter_result = choose_nearest(*f, &right_filter);
 
-            if (obs_result != std::nullopt)
+            if (filter_result != std::nullopt)
             {
-                auto obs_result_value = obs_result.value();
+                auto obs_result_value = filter_result.value()->first_obs;
                 obs_result_value.match_count--;
 
                 if (obs_result_value.match_count == 0)
-                    new_filters.emplace_back(is_horizontal, t, slope_max, obs_result_value.obs);
+                    // if the counter of the filter goes down to 0, then a new filter is produced
+                    // we note that here we should actually append the filter, and not the observation itself
+                    new_filters.push_back(right_filter);
             }
         }
 
-        return observation_s.match_count > 1;
+        return right_filter.first_obs.match_count > 1;
     }
 
     /**
@@ -446,8 +447,98 @@ namespace kalman
             filters.push_back(f);
     }
 
-    std::vector<Segment> traversal(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
-                                   uint discontinuity, Parameters params)
+    std::vector<std::vector<Filter>>
+    observations_to_filters(const std::vector<std::vector<Eigen::Vector3d>> &observations, bool is_horizontal,
+                            double slope_max)
+    {
+        auto out = std::vector<std::vector<Filter>>();
+
+        for (size_t t = 0; t < observations.size(); t++)
+        {
+            auto &col_obs_vector = observations[t];
+            auto col_filter_vector = std::vector<Filter>();
+            for (auto &obs : col_obs_vector)
+            {
+                col_filter_vector.emplace_back(is_horizontal, t, slope_max, obs);
+            }
+            out.push_back(col_filter_vector);
+        }
+        return out;
+    }
+
+    std::vector<Filter>
+    merge_filters_rec(size_t start, size_t end, std::vector<std::vector<Filter>> &line_pointer_column_filters,
+                      const Parameters &params)
+    {
+        std::vector<Filter> vec1;
+        std::vector<Filter> vec2;
+        if (end > start + 1)
+        {
+            // merge all filters
+            vec1 = merge_filters_rec(start, start + (end - start) / 2, line_pointer_column_filters, params);
+            vec2 = merge_filters_rec(start + (end - start) / 2 + 1, end, line_pointer_column_filters, params);
+            // then do the thing
+        }
+        else if (end < start + 1)
+            return line_pointer_column_filters[start];
+        else if (end == start + 1)
+        {
+            vec1 = line_pointer_column_filters[start];
+            vec2 = line_pointer_column_filters[end];
+        }
+
+
+        std::vector<Filter> filters_merged{};
+
+        // predict for all filters in left
+        for (auto &filter : vec1)
+            predict(filter);
+
+        // compare prediction with "first" observation of right side filter
+        // integrate by fusing the two filters
+        // in the vector of pointers, set all the columns to the vector containing the filter merged.
+
+        uint32_t two_matches = 0; // Number of t where two segments matched the same observation
+        bool two_matches_through_n = false;
+        size_t t = start + (end - start) / 2 + 1;
+
+        // loop through all of the observations of the right side
+        for (auto &filter : vec2)
+        {
+            auto &obs = filter.first_obs.obs;
+
+            std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
+            // find all the filters that match the current obs
+            find_match(vec1, accepted, obs, t, params);
+            if (accepted.empty() && obs(1, 0) < params.max_thickness)
+                // if we have no match, the filter is simply kept in the merged filters
+                // we also check that the observation is not too big
+                filters_merged.push_back(filter);
+            else
+            {
+                // if we have some matches
+                handle_find_filter(filters_merged, accepted, filter, reinterpret_cast<uint32_t &>(t), true,
+                                   params.slope_max_horizontal);
+            }
+        }
+
+        // Selection for next turn
+        std::vector<Segment> segments{};
+        auto selection = filter_selection(vec1, segments, t, two_matches, 10,
+                                          0, params);
+
+        filters_merged.insert(filters_merged.end(), selection.begin(), selection.end());
+        return filters_merged;
+    }
+
+    std::vector<Filter>
+    init_merge_filters(std::vector<std::vector<Filter>> &line_column_filters, const Parameters &params)
+    {
+        return merge_filters_rec(0, line_column_filters.size() - 1, line_column_filters, params);
+    }
+
+    std::vector<Segment> traversal_batch(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
+                                         uint discontinuity, Parameters params)
     {
         // Usefull parameter used in the function
         uint32_t xmult, ymult;
@@ -464,47 +555,26 @@ namespace kalman
         uint32_t two_matches = 0; // Number of t where two segments matched the same observation
         // Useful to NOT check if filters has to be merged
 
-        std::vector<std::vector<std::pair<int, int>>> observations;
+        std::vector<std::vector<Eigen::Vector3d>> observations;
 
-        for (uint32_t t = 0; t < t_max; t++)
+        auto p = obs_parser();
+        if (!is_horizontal)
         {
-            for (auto &filter : filters)
-                predict(filter);
+            auto tr_image = image.copy();
+            tr_image.transpose();
+            observations = p.parse(tr_image.width, tr_image.height, tr_image.get_buffer_const(), params.max_llum);
+        } else
+            observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
 
-            new_filters.clear();
-            bool two_matches_through_n = false;
-            uint32_t filter_index = 0;
+        std::vector<std::vector<Filter>> column_filters = observations_to_filters(observations, is_horizontal,
+                                                                                  slope_max);
 
+        std::vector<Filter> final_filters = init_merge_filters(column_filters, params);
 
-            for (uint32_t n = 0; n < n_max; n++)
-            {
-                if (image_at(image, n, t, is_horizontal) < params.max_llum)
-                {
-                    Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
-
-                    std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
-                    find_match(filters, accepted, obs, t, filter_index, params);
-                    if (accepted.empty() && obs(1, 0) < params.max_thickness)
-                        new_filters.emplace_back(is_horizontal, t, slope_max, obs);
-                    else
-                        two_matches_through_n =
-                                handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) ||
-                                two_matches_through_n;
-                }
-            }
-
-            if (two_matches_through_n)
-                two_matches++;
-            else
-                two_matches = 0;
-
-            // Selection for next turn
-            selection = filter_selection(filters, segments, t, two_matches, min_len_embryo, discontinuity, params);
-            // Merge selection and new_filters in filters
-            update_current_filters(filters, selection, new_filters);
+        for (auto &filter : final_filters)
+        {
+            segments.push_back(make_segment_from_filter(filter, 1, 0));
         }
-
-        to_thrash(filters, segments, min_len_embryo, params);
 
         return segments;
     }
@@ -816,8 +886,9 @@ namespace kalman
         std::vector<Segment> horizontal_segments;
         std::vector<Segment> vertical_segments;
 
-        horizontal_segments = traversal(image, true, min_len_embryo, discontinuity, params);
-        vertical_segments = traversal(image, false, min_len_embryo, discontinuity, params);
+
+        horizontal_segments = traversal_batch(image, true, min_len_embryo, discontinuity, params);
+//        vertical_segments = traversal_batch(image, false, min_len_embryo, discontinuity, params);
 
         return std::make_pair(horizontal_segments, vertical_segments);
     }
@@ -860,7 +931,7 @@ namespace kalman
         return res;
     }
 
-    std::vector<Segment> detect_line(image2d<uint8_t> &image, int min_len, int discontinuity)
+    std::vector<Segment> detect_line_batch(image2d<uint8_t> &image, int min_len, int discontinuity)
     {
         return detect_line(image, min_len, discontinuity, Parameters());
     }

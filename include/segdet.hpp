@@ -14,7 +14,7 @@ namespace kalman
    * @param discontinuity The maximum accepted discontinuity for segments
    * @return A vector of detected segments
    */
-  std::vector<Segment> detect_line(image2d<uint8_t> &image, int min_len, int discontinuity, const std::string& mode);
+  std::vector<Segment> detect_line(image2d<uint8_t> &image, int min_len, int discontinuity);
 //  std::vector<Segment> detect_line(image2d<uint8_t>, int min_len, int discontinuity,
 //                                   const Parameters& params);
 

@@ -72,6 +72,7 @@ namespace kalman
       , W(Eigen::Matrix<double, 4, 1>::Zero())
       , N(Eigen::Matrix<double, 3, 1>::Zero())
       , H(Eigen::Matrix<double, 4, 4>::Identity())
+      , first_obs(observation, 0, t_integration)
       , observation(std::nullopt)
       , observation_distance(0)
       , last_integration(t_integration)
@@ -131,6 +132,8 @@ namespace kalman
 
     Eigen::Matrix<double, 4, 1> S_predicted;
     Eigen::Matrix<double, 3, 1> X_predicted;
+
+    Observation first_obs;
     std::optional<Observation>
               observation;          // matrix {{position (n)},{thickness},{luminosity}}, nullopt if none was matched
     u_int32_t observation_distance; // n distance from last observation to current prediction

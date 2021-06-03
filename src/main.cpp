@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
-#include "../include/ppm_parser.hh"
-#include "../include/filter.hpp"
-#include "../include/segdet.hpp"
-#include "../include/observation_parser.hh"
+#include "ppm_parser.hh"
+#include "filter.hpp"
+#include "segdet.hpp"
+#include "observation_parser.hh"
 
 int main(int argc, char *argv[])
 {
+    kalman::test();
+    /*
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";
@@ -69,4 +71,5 @@ int main(int argc, char *argv[])
 
     
     return 0;
+     */
 }

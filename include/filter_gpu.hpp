@@ -132,6 +132,8 @@ namespace kalman_gpu
 
     Eigen::Matrix<double, 4, 1> S_predicted;
     Eigen::Matrix<double, 3, 1> X_predicted;
+
+    int observation_index;
     std::optional<Observation>
               observation;          // matrix {{position (n)},{thickness},{luminosity}}, nullopt if none was matched
     u_int32_t observation_distance; // n distance from last observation to current prediction

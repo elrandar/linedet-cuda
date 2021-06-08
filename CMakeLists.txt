@@ -12,6 +12,8 @@ set(CMAKE_BUILD_TYPE Debug)
 add_executable(kalman-gpu 
                 src/filter.cpp 
                 src/segdet.cpp
+                src/segdet_gpu.cpp
+                src/filter_gpu.cpp
                 include/filter.hpp
                 include/linearregression.hpp
                 include/parameter.hpp

@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <utility>
 
-#include "../include/filter.hpp"
+#include "../include/filter_gpu.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/observation_parser.hh"
-#include "../include/segdet.hpp"
+#include "../include/segdet_gpu.hpp"
 
 
-namespace kalman
+namespace kalman_gpu
 {
     /**
    * Give the value of the pixel in (n, t) according to traversal direction
@@ -447,7 +447,7 @@ namespace kalman
             filters.push_back(f);
     }
 
-    std::vector<Segment> traversal(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
+    std::vector<Segment> traversal_batch(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
                                    uint discontinuity, Parameters params)
     {
         // Usefull parameter used in the function
@@ -465,8 +465,18 @@ namespace kalman
         uint32_t two_matches = 0; // Number of t where two segments matched the same observation
         // Useful to NOT check if filters has to be merged
 
-        std::vector<std::vector<std::pair<int, int>>> observations;
+        std::vector<std::vector<Eigen::Vector3d>> observations;
 
+        auto p = obs_parser();
+        if (!is_horizontal)
+        {
+            auto tr_image = image.copy();
+            tr_image.transpose();
+            observations = p.parse(tr_image.width, tr_image.height, tr_image.get_buffer_const(), params.max_llum);
+        }
+        else
+            observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
+        
         for (uint32_t t = 0; t < t_max; t++)
         {
             for (auto &filter : filters)
@@ -477,30 +487,27 @@ namespace kalman
             uint32_t filter_index = 0;
 
 
-            for (uint32_t n = 0; n < n_max; n++)
+            for (auto &obs : observations[t])
             {
-                if (image_at(image, n, t, is_horizontal) < params.max_llum)
-                {
-                    Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
-
-                    std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
+                std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
                     find_match(filters, accepted, obs, t, filter_index, params);
                     if (accepted.empty() && obs(1, 0) < params.max_thickness)
                         new_filters.emplace_back(is_horizontal, t, slope_max, obs);
                     else
                         two_matches_through_n =
-                            handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
+                                handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) ||
+                                two_matches_through_n;
                 }
-            }
-            
-            if (two_matches_through_n)
-                two_matches++;
-            else
-                two_matches = 0;
 
-            // Selection for next turn
-            selection = filter_selection(filters, segments, t, two_matches, min_len_embryo, discontinuity, params);
-            // Merge selection and new_filters in filters
+
+                if (two_matches_through_n)
+                    two_matches++;
+                else
+                    two_matches = 0;
+
+                // Selection for next turn
+                selection = filter_selection(filters, segments, t, two_matches, min_len_embryo, discontinuity, params);
+                // Merge selection and new_filters in filters
             update_current_filters(filters, selection, new_filters);
         }
 
@@ -819,8 +826,8 @@ namespace kalman
         std::vector<Segment> vertical_segments;
 
 
-        horizontal_segments = traversal(image, true, min_len_embryo, discontinuity, params);
-        vertical_segments = traversal(image, false, min_len_embryo, discontinuity, params);
+        horizontal_segments = traversal_batch(image, true, min_len_embryo, discontinuity, params);
+        vertical_segments = traversal_batch(image, false, min_len_embryo, discontinuity, params);
 
 
         return std::make_pair(horizontal_segments, vertical_segments);

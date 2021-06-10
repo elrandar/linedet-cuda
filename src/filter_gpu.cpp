@@ -103,7 +103,7 @@ namespace kalman_gpu
            accepts_sigma(f.X_predicted(2, 0), obs(2, 0), f.sigma_luminosity);
   }
 
-  std::optional<Observation> choose_nearest(Filter& f, Observation& obs)
+  std::optional<Observation> choose_nearest(Filter& f, Observation& obs, int obs_index)
   {
     auto X             = obs.obs;
     auto obs_to_return = std::make_optional(obs);
@@ -117,6 +117,7 @@ namespace kalman_gpu
       else
         obs_to_return = std::nullopt;
       f.observation          = obs;
+      f.observation_index = obs_index;
       f.observation_distance = distance;
     }
     return obs_to_return;

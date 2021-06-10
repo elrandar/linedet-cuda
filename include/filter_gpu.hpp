@@ -172,7 +172,7 @@ namespace kalman_gpu
    * @param obs The observation to check
    * @return The best observation for the filter
    */
-  std::optional<Observation> choose_nearest(Filter& f, Observation& obs);
+  std::optional<Observation> choose_nearest(Filter& f, Observation& obs, int obs_index);
 
   /**
    * The integrate method, given a filter f, will update the state with the a new value

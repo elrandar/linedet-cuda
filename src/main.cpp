@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image Sequentially\n";
         // Sequential Line detection
-        auto out = kalman::detect_line(img, 10, 0);
+        auto out = kalman::detect_line(img, 60, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image in batches, using CPU\n";
 
-        auto out = kalman_gpu::detect_line(img, 10, 0);
+        auto out = kalman_gpu::detect_line(img, 60, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);

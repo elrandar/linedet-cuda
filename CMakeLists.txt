@@ -18,7 +18,8 @@ add_executable(kalman-gpu
         src/filter.cpp
         src/segdet.cpp
         src/main.cpp
-        src/observation_parser.cu src/observation_parser.cpp)
+        src/observation_parser.cu
+        src/observation_parser.cpp)
 
 target_link_libraries(kalman-gpu Eigen3::Eigen)
 include_directories(include)

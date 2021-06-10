@@ -476,7 +476,7 @@ namespace kalman
         }
         else
             observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
-        
+
         for (uint32_t t = 0; t < t_max; t++)
         {
             for (auto &filter : filters)

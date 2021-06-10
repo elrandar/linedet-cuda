@@ -10,7 +10,6 @@
 
 int main(int argc, char *argv[])
 {
-    kalman::test();
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";
@@ -51,6 +50,7 @@ int main(int argc, char *argv[])
     }
     else if (mode == "--batch")
     {
+        /* OLD CODE
         std::cout << "Processing Image in batches, using CPU\n";
 
         auto out = kalman::detect_line(img, 10, 0, "batch");
@@ -61,27 +61,26 @@ int main(int argc, char *argv[])
 
         // Output
         lab_arr.imsave("out.pgm");
+        */
+
+        // Doing the exact same thing as gpu does
+        std::cout << "USING CPU\n";
+        auto res = kalman::obs_parser().parse(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res[i].size() << " ";
+        std::cout << "\n";
     }
     else if (mode == "--gpu")
     {
-        std::cout << "Processing Image in parallel, using GPU\n";
+        std::cout << "USING GPU\n";
         auto res = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 245);
 
         std::cout << "Sizes:\n";
         for (auto i =0u; i < img.width; ++i)
             std::cout << res.second[i] << " ";
         std::cout << "\n";
-
-        std::cout << "Processing Image in batches, using CPU\n";
-
-        auto out = kalman::detect_line(img, 10, 0, "batch");
-
-        // Image labellisation
-        auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
-        labeled_arr(lab_arr, out);
-
-        // Output
-        lab_arr.imsave("out.pgm");
     }
     else
         throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");

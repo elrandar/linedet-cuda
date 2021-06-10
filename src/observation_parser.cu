@@ -124,18 +124,14 @@ namespace kalman {
         if (err)
             errx(1, "Cuda img-host memcpy error code %d", err);
 
-        // Getting gpu specs
-        int devId = 0;
-        // There may be more devices!
-        cudaDeviceProp deviceProp;
-        cudaGetDeviceProperties(&deviceProp, devId);
-        int xThreads = deviceProp.maxThreadsDim[0];
-        dim3 DimBlock(xThreads, 1, 1);// 1D VecAddint
-        auto xBlocks = (int) ceil(width / xThreads);
-        dim3 DimGrid(xBlocks, 1, 1);
+        auto bsize = 32; // Do not change this number, else program won't work
+        int w = std::ceil(static_cast<float>(width) / bsize);
+        int h = 1;
+        dim3 dimBlock(bsize, bsize);
+        dim3 dimGrid(w, h);
 
         // Calling kernel *width* times
-        column_parser<<<1024, 1024>>>(width, height, img, vec, threshold, sizes);
+        column_parser<<<dimGrid, dimBlock>>>(width, height, img, vec, threshold, sizes);
 
         // Creating result array
         Eigen::Vector3d *res = new Eigen::Vector3d[size];
@@ -150,8 +146,6 @@ namespace kalman {
         err = cudaMemcpy(host_sizes, sizes, width * sizeof(unsigned int), cudaMemcpyDeviceToHost);
         if (err)
             errx(1, "Cuda sizes-host memcpy error code %d", err);
-
-        std::cout << "Parse with GPU done.\n";
 
         return std::make_pair(res, host_sizes);
     }

@@ -10,12 +10,6 @@
 
 int main(int argc, char *argv[])
 {
-
-    auto m1 = std::vector<double>({8, -12, 2, 13, 4, 8});
-    auto m2 = std::vector<double>({8, 3, 6 , 54, -78, 20, 6, 2});
-
-    auto m3 = matmul(m1, m2, 3, 2, 4);
-    std::cout << vec_to_eigen(m3, 3, 4) << "\n";
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";

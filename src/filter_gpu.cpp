@@ -59,14 +59,14 @@ namespace kalman_gpu
 
   void predict(Filter& f)
   {
-    f.S_predicted = A * f.S + f.W;
-    f.X_predicted = C * f.S_predicted + f.N;
+    f.S_predicted = A % f.S + f.W;
+    f.X_predicted = C % f.S_predicted + f.N;
 
     uint32_t thik_d2 = f.X_predicted(1, 0) / 2;
     f.n_min = f.X_predicted(0, 0) - thik_d2;
     f.n_max = f.X_predicted(0, 0) + thik_d2;
 
-    f.H = A * f.H * A_transpose;
+    f.H = A % f.H % A_transpose;
 
     f.W(0, 0) = 0;
     f.W(1, 0) = 0;
@@ -196,9 +196,14 @@ namespace kalman_gpu
       f.currently_under_other.clear();
     }
 
-    auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
-    f.S    = f.S_predicted + G * (observation - f.X_predicted);
-    f.H    = (Eigen::Matrix<double, 4, 4>::Identity() - G * C) * f.H;
+    if (f.H * C_transpose != f.H % C_transpose)
+    {
+        throw std::runtime_error("no");
+    }
+
+    auto G = f.H % C_transpose % invert_matrix3(C % f.H % C_transpose + Vn);
+    f.S    = f.S_predicted + G % (observation - f.X_predicted);
+    f.H    = (Eigen::Matrix<double, 4, 4>::Identity() - G % C) % f.H;
 
     insert_into_filters_list(f, observation, t, params);
 

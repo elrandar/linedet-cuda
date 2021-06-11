@@ -51,6 +51,11 @@ Eigen::MatrixXd matmul(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
     return vec_to_eigen(mult, lhs.rows(), rhs.cols());
 }
 
+Eigen::MatrixXd operator%(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
+{
+    return matmul(lhs, rhs);
+}
+
 Eigen::MatrixXd vec_to_eigen(std::vector<double> vec, size_t n_row, size_t n_col)
 {
     auto out = Eigen::MatrixXd(n_row, n_col);
@@ -212,6 +217,7 @@ std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t l
         out.push_back(a * e - d * b);
         return out;
     }
+    return std::vector<double>();
 }
 
 

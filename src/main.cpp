@@ -10,25 +10,12 @@
 
 int main(int argc, char *argv[])
 {
-//
-//    std::cout << compute_det(std::vector<double>({9, 0, 5,
-//    8, 4, 5,
-//    7, 3, 8}), 3);
-//
-//    for (auto & elm : invert_matrix(std::vector<double>({9, 0, 5,
-//                                                         8, 4, 5,
-//                                                         7, 3, 8}), 3))
-//    {
-//    std::cout << elm << " ";
-//    }
-//
-//    std::cout << '\n' << std::endl;
-//    auto mat = Eigen::Matrix<double, 3, 3>();
-//    mat << 9, 0, 5,
-//            8, 4, 5,
-//            7, 3, 8;
-//    std::cout << invert_matrix3(mat
-//    );
+
+    auto m1 = std::vector<double>({8, -12, 2, 13, 4, 8});
+    auto m2 = std::vector<double>({8, 3, 6 , 54, -78, 20, 6, 2});
+
+    auto m3 = matmul(m1, m2, 3, 2, 4);
+    std::cout << vec_to_eigen(m3, 3, 4) << "\n";
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";

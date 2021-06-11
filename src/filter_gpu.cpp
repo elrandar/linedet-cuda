@@ -4,6 +4,7 @@
 
 #include "../include/filter_gpu.hpp"
 #include "../include/linearregression.hpp"
+#include "../include/matrix_tools.hpp"
 #include <algorithm>
 #include <numeric>
 
@@ -195,7 +196,7 @@ namespace kalman_gpu
       f.currently_under_other.clear();
     }
 
-    auto G = f.H * C_transpose * (C * f.H * C_transpose + Vn).inverse();
+    auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
     f.S    = f.S_predicted + G * (observation - f.X_predicted);
     f.H    = (Eigen::Matrix<double, 4, 4>::Identity() - G * C) * f.H;
 

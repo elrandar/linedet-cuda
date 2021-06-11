@@ -5,10 +5,30 @@
 #include "../include/filter.hpp"
 #include "../include/segdet.hpp"
 #include "../include/observation_parser.hh"
+#include "../include/matrix_tools.hpp"
 #include "../include/segdet_gpu.hpp"
 
 int main(int argc, char *argv[])
 {
+//
+//    std::cout << compute_det(std::vector<double>({9, 0, 5,
+//    8, 4, 5,
+//    7, 3, 8}), 3);
+//
+//    for (auto & elm : invert_matrix(std::vector<double>({9, 0, 5,
+//                                                         8, 4, 5,
+//                                                         7, 3, 8}), 3))
+//    {
+//    std::cout << elm << " ";
+//    }
+//
+//    std::cout << '\n' << std::endl;
+//    auto mat = Eigen::Matrix<double, 3, 3>();
+//    mat << 9, 0, 5,
+//            8, 4, 5,
+//            7, 3, 8;
+//    std::cout << invert_matrix3(mat
+//    );
     using namespace kalman;
     char *filename;
     std::string mode = "--sequential";
@@ -39,7 +59,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image Sequentially\n";
         // Sequential Line detection
-        auto out = kalman::detect_line(img, 60, 0);
+        auto out = kalman::detect_line(img, 20, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
@@ -52,7 +72,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image in batches, using CPU\n";
 
-        auto out = kalman_gpu::detect_line(img, 60, 0);
+        auto out = kalman_gpu::detect_line(img, 20, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);

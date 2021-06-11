@@ -14,6 +14,7 @@ add_executable(kalman-gpu
                 src/segdet.cpp
                 src/segdet_gpu.cpp
                 src/filter_gpu.cpp
+                src/matrix_tools.cpp
                 include/filter.hpp
                 include/linearregression.hpp
                 include/parameter.hpp

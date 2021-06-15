@@ -59,14 +59,14 @@ namespace kalman_gpu
 
   void predict(Filter& f)
   {
-    f.S_predicted = A % f.S + f.W;
-    f.X_predicted = C % f.S_predicted + f.N;
+    f.S_predicted = A * f.S + f.W;
+    f.X_predicted = C * f.S_predicted + f.N;
 
     uint32_t thik_d2 = f.X_predicted(1, 0) / 2;
     f.n_min = f.X_predicted(0, 0) - thik_d2;
     f.n_max = f.X_predicted(0, 0) + thik_d2;
 
-    f.H = A % f.H % A_transpose;
+    f.H = A * f.H * A_transpose;
 
     f.W(0, 0) = 0;
     f.W(1, 0) = 0;
@@ -88,7 +88,7 @@ namespace kalman_gpu
     return (observation - prediction) <= 3 * sigma;
   }
 
-  bool accepts(const Filter& f, const Eigen::Matrix<double, 3, 1>& obs, uint32_t min, uint32_t max, Parameters params)
+  bool accepts(const Filter& f, const kMatrix<double>& obs, uint32_t min, uint32_t max, Parameters params)
   {
     if (f.n_values.size() > params.min_nb_values_sigma && obs(1, 0) / f.X_predicted(1, 0) > 1.5 &&
         std::abs(obs(1, 0) - f.X_predicted(1, 0)) > 3)
@@ -158,8 +158,9 @@ namespace kalman_gpu
    * @param observation The observation matrix to integrate
    * @param t The position at which the integration was made
    */
-  void insert_into_filters_list(Filter& f, Eigen::Matrix<double, 3, 1> observation, uint32_t t, Parameters params)
-  {
+//  void insert_into_filters_list(Filter& f, Eigen::Matrix<double, 3, 1> observation, uint32_t t, Parameters params)
+void insert_into_filters_list(Filter& f, const kMatrix<double>& observation, uint32_t t, Parameters params)
+{
     f.n_values.push_back(observation(0, 0));
     f.thicknesses.push_back(observation(1, 0));
     f.luminosities.push_back(observation(2, 0));
@@ -196,14 +197,14 @@ namespace kalman_gpu
       f.currently_under_other.clear();
     }
 
-    if (f.H * C_transpose != f.H % C_transpose)
-    {
-        throw std::runtime_error("no");
-    }
 
-    auto G = f.H % C_transpose % invert_matrix3(C % f.H % C_transpose + Vn);
-    f.S    = f.S_predicted + G % (observation - f.X_predicted);
-    f.H    = (Eigen::Matrix<double, 4, 4>::Identity() - G % C) % f.H;
+    auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
+    f.S    = f.S_predicted + G * (observation - f.X_predicted);
+    auto id4 = kMatrix<double>({1, 0, 0, 0,
+                                0, 1, 0, 0,
+                                0, 0, 1, 0,
+                                0, 0, 0, 1}, 4, 4);
+    f.H    = (id4 - G * C) * f.H;
 
     insert_into_filters_list(f, observation, t, params);
 

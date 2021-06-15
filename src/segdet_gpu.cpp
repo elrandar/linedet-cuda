@@ -1,5 +1,4 @@
 
-#include <Eigen/Dense>
 #include <algorithm>
 #include <utility>
 
@@ -123,7 +122,7 @@ namespace kalman_gpu
    * @param index Current index in n column
    */
     bool find_match(Filter &filter,
-                    const Eigen::Matrix<double, 3, 1> &obs,
+                    const kMatrix<double> &obs,
                     const uint32_t &t, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
@@ -446,7 +445,7 @@ namespace kalman_gpu
 
         set_parameters(is_horizontal, xmult, ymult, slope_max, n_max, t_max, image.size(), image.size(1), params);
 
-        std::vector<std::vector<Eigen::Vector3d>> observations;
+        std::vector<std::vector<kMatrix<double>>> observations;
 
         auto p = obs_parser();
 

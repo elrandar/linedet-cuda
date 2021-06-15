@@ -1,7 +1,7 @@
 #pragma once
 
 #include "segment.hpp"
-#include <Eigen/Dense>
+#include "matrix_tools.hpp"
 #include <utility>
 #include <optional>
 #include <vector>
@@ -31,28 +31,35 @@ namespace kalman_gpu
      * @param matchCount The number of time this observation was matched
      * @param t The position at which the observation was made
      */
-    Observation(Eigen::Matrix<double, 3, 1> obs, uint32_t matchCount, uint32_t t)
+    Observation(kMatrix<double> obs, uint32_t matchCount, uint32_t t)
       : obs(std::move(obs))
       , match_count(matchCount)
       , t(t)
     {
     }
-    Eigen::Matrix<double, 3, 1> obs;         // The observation Matrix
+//    Eigen::Matrix<double, 3, 1> obs;         // The observation Matrix
+    kMatrix<double> obs;         // The observation Matrix
     uint32_t                    match_count; // The numbers of time the observation was matched to a filter
     uint32_t                    t;           // The t-position at which the observation was made
   };
 
-  static const Eigen::Matrix<double, 4, 4>
-      A((Eigen::Matrix<double, 4, 4>() << 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-  static const Eigen::Matrix<double, 4, 4>
-      A_transpose((Eigen::Matrix<double, 4, 4>() << 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-  static const Eigen::Matrix<double, 3, 4>
-      C((Eigen::Matrix<double, 3, 4>() << 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-  static const Eigen::Matrix<double, 4, 3>
-      C_transpose((Eigen::Matrix<double, 4, 3>() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1).finished());
-  static const Eigen::Matrix<double, 3, 3> Vn((Eigen::Matrix<double, 3, 3>() << SEGDET_VARIANCE_POSITION, 0, 0, 0,
-                                               SEGDET_VARIANCE_THICKNESS, 0, 0, 0, SEGDET_VARIANCE_LUMINOSITY)
-                                                  .finished());
+  static const kMatrix<double> A({1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, 4, 4);
+  static const kMatrix<double> A_transpose({1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, 4, 4);
+  static const kMatrix<double> C({1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, 3, 4);
+  static const kMatrix<double> C_transpose({1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}, 4, 3);
+  static const kMatrix<double> Vn({SEGDET_VARIANCE_POSITION, 0, 0, 0,
+                                   SEGDET_VARIANCE_THICKNESS, 0, 0, 0, SEGDET_VARIANCE_LUMINOSITY}, 3, 3);
+//  static const Eigen::Matrix<double, 4, 4>
+//      A((Eigen::Matrix<double, 4, 4>() << 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
+//  static const Eigen::Matrix<double, 4, 4>
+//      A_transpose((Eigen::Matrix<double, 4, 4>() << 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
+//  static const Eigen::Matrix<double, 3, 4>
+//      C((Eigen::Matrix<double, 3, 4>() << 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
+//  static const Eigen::Matrix<double, 4, 3>
+//      C_transpose((Eigen::Matrix<double, 4, 3>() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1).finished());
+//  static const Eigen::Matrix<double, 3, 3> Vn((Eigen::Matrix<double, 3, 3>() << SEGDET_VARIANCE_POSITION, 0, 0, 0,
+//                                               SEGDET_VARIANCE_THICKNESS, 0, 0, 0, SEGDET_VARIANCE_LUMINOSITY)
+//                                                  .finished());
 
   /**
    * The Filter struct represents an ongoing kalman filter
@@ -66,16 +73,25 @@ namespace kalman_gpu
      * @param slopeMax The maximum value that the filter's slope can have
      * @param observation The filter's first observation
      */
-    Filter(bool isHorizontal, uint32_t t_integration, double slopeMax, Eigen::Matrix<double, 3, 1> observation)
+//    Filter(bool isHorizontal, uint32_t t_integration, double slopeMax, Eigen::Matrix<double, 3, 1> observation)
+      Filter(bool isHorizontal, uint32_t t_integration, double slopeMax, kMatrix<double> observation)
       : is_horizontal(isHorizontal)
       , slope_max(slopeMax)
-      , S((Eigen::Matrix<double, 4, 1>() << observation(0, 0), 0, observation(1, 0), observation(2, 0)).finished())
-      , W(Eigen::Matrix<double, 4, 1>::Zero())
-      , N(Eigen::Matrix<double, 3, 1>::Zero())
-      , H(Eigen::Matrix<double, 4, 4>::Identity())
+      , S(kMatrix<double>({observation(0, 0), 0, observation(1, 0), observation(2, 0)}, 4, 1))
+      , W(kMatrix<double>({0, 0, 0, 0}, 4, 1))
+//      , W(Eigen::Matrix<double, 4, 1>::Zero())
+      , N(kMatrix<double>({0,0,0}, 3, 1))
+//      , N(Eigen::Matrix<double, 3, 1>::Zero())
+      , H(kMatrix<double>({1, 0, 0, 0,
+                               0, 1, 0, 0,
+                               0, 0, 1, 0 ,
+                               0, 0, 0,1}, 4, 4))
+//      , H(Eigen::Matrix<double, 4, 4>::Identity())
       , observation(std::nullopt)
       , observation_distance(0)
       , last_integration(t_integration)
+      , S_predicted(kMatrix<double>({0, 0,0, 0}, 4, 1))
+      , X_predicted(kMatrix<double>({0, 0, 0}, 3, 1))
     {
       first    = t_integration;
       t_values = std::vector<uint32_t>({t_integration});
@@ -98,8 +114,9 @@ namespace kalman_gpu
       sigma_thickness  = SEGDET_DEFAULT_SIGMA_THK;
       sigma_luminosity = SEGDET_DEFAULT_SIGMA_LUM;
 
-      S_predicted = Eigen::Matrix<double, 4, 1>::Zero();
-      X_predicted = Eigen::Matrix<double, 3, 1>::Zero();
+//      S_predicted = Eigen::Matrix<double, 4, 1>::Zero();
+//      X_predicted = Eigen::Matrix<double, 3, 1>::Zero();
+
     }
 
     bool      is_horizontal; // set if filter is horizontal (t = x, n = y)
@@ -119,10 +136,14 @@ namespace kalman_gpu
     std::vector<Point> currently_under_other;
     std::vector<Point> segment_points;
 
-    Eigen::Matrix<double, 4, 1> S; // state matrix {{position (n)}, {slope}, {thickness}, {luminosity}}
-    Eigen::Matrix<double, 4, 1> W; // noise matrix
-    Eigen::Matrix<double, 3, 1> N; // measured noise matrix
-    Eigen::Matrix<double, 4, 4> H; // S prediction error variance matrix
+//    Eigen::Matrix<double, 4, 1> S; // state matrix {{position (n)}, {slope}, {thickness}, {luminosity}}
+//    Eigen::Matrix<double, 4, 1> W; // noise matrix
+//    Eigen::Matrix<double, 3, 1> N; // measured noise matrix
+//    Eigen::Matrix<double, 4, 4> H; // S prediction error variance matrix
+    kMatrix<double> S; // state matrix {{position (n)}, {slope}, {thickness}, {luminosity}}
+    kMatrix<double> W; // noise matrix
+    kMatrix<double> N; // measured noise matrix
+    kMatrix<double> H; // S prediction error variance matrix
 
     double n_min;
     double n_max;
@@ -130,8 +151,10 @@ namespace kalman_gpu
     double sigma_thickness;
     double sigma_luminosity;
 
-    Eigen::Matrix<double, 4, 1> S_predicted;
-    Eigen::Matrix<double, 3, 1> X_predicted;
+//    Eigen::Matrix<double, 4, 1> S_predicted;
+//    Eigen::Matrix<double, 3, 1> X_predicted;
+    kMatrix<double> S_predicted;
+    kMatrix<double> X_predicted;
 
     int observation_index;
     std::optional<Observation>
@@ -162,7 +185,7 @@ namespace kalman_gpu
    * @param max The observation max value
    * @return true if observation is compatible with filter else false
    */
-  bool accepts(const Filter& filter, const Eigen::Matrix<double, 3, 1>& obs, uint32_t min, uint32_t max,
+  bool accepts(const Filter& filter, const kMatrix<double>& obs, uint32_t min, uint32_t max,
                Parameters params);
 
   /**

@@ -1,5 +1,4 @@
 
-#include <Eigen/Dense>
 #include <algorithm>
 #include <utility>
 
@@ -35,7 +34,7 @@ namespace kalman
    * @param is_horizontal
    * @return Observation Eigen matrix
    */
-    Eigen::Matrix<double, 3, 1> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
+    kMatrix<double> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
                                                       uint32_t n_max, bool is_horizontal, Parameters params)
     {
         uint32_t thickness = 0;
@@ -87,7 +86,7 @@ namespace kalman
 
         n = n_to_skip; // Setting reference value of n
 
-        return Eigen::Matrix<double, 3, 1>(position, thickness, mean_val);
+        return kMatrix<double>({static_cast<double>(position), static_cast<double>(thickness), mean_val}, 3, 1);
     }
 
     /**
@@ -121,7 +120,7 @@ namespace kalman
    * @param t Current t
    * @param index Current index in n column
    */
-    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const Eigen::Matrix<double, 3, 1> &obs,
+    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const kMatrix<double> &obs,
                     const uint32_t &t, uint32_t &index, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
@@ -408,7 +407,7 @@ namespace kalman
    * @return
    */
     bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
-                            const Eigen::Matrix<double, 3, 1> &obs, uint32_t &t, bool is_horizontal, double slope_max)
+                            const kMatrix<double> &obs, uint32_t &t, bool is_horizontal, double slope_max)
     {
         auto observation_s = Observation(obs, accepted.size(), t);
 
@@ -481,7 +480,7 @@ namespace kalman
             {
                 if (image_at(image, n, t, is_horizontal) < params.max_llum)
                 {
-                    Eigen::Matrix<double, 3, 1> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
+                    kMatrix<double> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
 
                     std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
                     find_match(filters, accepted, obs, t, filter_index, params);

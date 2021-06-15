@@ -4,6 +4,7 @@
 
 #include "../include/filter.hpp"
 #include "../include/linearregression.hpp"
+#include <cmath>
 #include <algorithm>
 #include <numeric>
 
@@ -87,7 +88,7 @@ namespace kalman
     return (observation - prediction) <= 3 * sigma;
   }
 
-  bool accepts(const Filter& f, const Eigen::Matrix<double, 3, 1>& obs, uint32_t min, uint32_t max, Parameters params)
+  bool accepts(const Filter& f, const kMatrix<double>& obs, uint32_t min, uint32_t max, Parameters params)
   {
     if (f.n_values.size() > params.min_nb_values_sigma && obs(1, 0) / f.X_predicted(1, 0) > 1.5 &&
         std::abs(obs(1, 0) - f.X_predicted(1, 0)) > 3)
@@ -156,31 +157,31 @@ namespace kalman
    * @param observation The observation matrix to integrate
    * @param t The position at which the integration was made
    */
-  void insert_into_filters_list(Filter& f, Eigen::Matrix<double, 3, 1> observation, uint32_t t, Parameters params)
+  void insert_into_filters_list(Filter& f, const kMatrix<double>& observation, uint32_t t, Parameters params)
   {
-    f.n_values.push_back(observation(0, 0));
-    f.thicknesses.push_back(observation(1, 0));
-    f.luminosities.push_back(observation(2, 0));
-    f.t_values.push_back(t);
-    f.slopes.push_back(compute_slope(f));
+      f.n_values.push_back(observation(0, 0));
+      f.thicknesses.push_back(observation(1, 0));
+      f.luminosities.push_back(observation(2, 0));
+      f.t_values.push_back(t);
+      f.slopes.push_back(compute_slope(f));
 
-    if (f.n_values.size() > params.nb_values_to_keep)
-    {
-      auto thick = f.thicknesses[0];
-      auto nn    = f.n_values[0];
-      auto tt    = f.t_values[0];
+      if (f.n_values.size() > params.nb_values_to_keep)
+      {
+          auto thick = f.thicknesses[0];
+          auto nn    = f.n_values[0];
+          auto tt    = f.t_values[0];
 
-      f.thicknesses.erase(f.thicknesses.begin());
-      f.t_values.erase(f.t_values.begin());
-      f.n_values.erase(f.n_values.begin());
-      f.luminosities.erase(f.luminosities.begin());
-      f.slopes.erase(f.slopes.begin());
+          f.thicknesses.erase(f.thicknesses.begin());
+          f.t_values.erase(f.t_values.begin());
+          f.n_values.erase(f.n_values.begin());
+          f.luminosities.erase(f.luminosities.begin());
+          f.slopes.erase(f.slopes.begin());
 
-      if (f.first_slope == std::nullopt)
-        f.first_slope = std::make_optional(f.slopes[f.slopes.size() - 1]);
+          if (f.first_slope == std::nullopt)
+              f.first_slope = std::make_optional(f.slopes[f.slopes.size() - 1]);
 
-      f.segment_points.emplace_back(nn, tt, thick, f.is_horizontal);
-    }
+          f.segment_points.emplace_back(nn, tt, thick, f.is_horizontal);
+      }
   }
 
   void integrate(Filter& f, uint32_t t, Parameters params)
@@ -194,9 +195,13 @@ namespace kalman
       f.currently_under_other.clear();
     }
 
-    auto G = f.H * C_transpose * (C * f.H * C_transpose + Vn).inverse();
-    f.S    = f.S_predicted + G * (observation - f.X_predicted);
-    f.H    = (Eigen::Matrix<double, 4, 4>::Identity() - G * C) * f.H;
+      auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
+      f.S    = f.S_predicted + G * (observation - f.X_predicted);
+      auto id4 = kMatrix<double>({1, 0, 0, 0,
+                                  0, 1, 0, 0,
+                                  0, 0, 1, 0,
+                                  0, 0, 0, 1}, 4, 4);
+      f.H    = (id4 - G * C) * f.H;
 
     insert_into_filters_list(f, observation, t, params);
 

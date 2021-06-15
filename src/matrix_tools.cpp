@@ -25,50 +25,50 @@ std::vector<double> matmul(const std::vector<double> &lhs, const std::vector<dou
 }
 
 
-std::vector<double> eigen_to_vec(const Eigen::MatrixXd &mat)
-{
-    auto out = std::vector<double>(mat.cols() * mat.rows());
+//std::vector<double> eigen_to_vec(const Eigen::MatrixXd &mat)
+//{
+//    auto out = std::vector<double>(mat.cols() * mat.rows());
+//
+//    for (int i = 0; i < mat.cols(); i++)
+//        for (int j = 0; j < mat.rows(); j++)
+//            out[i + j * mat.cols()] = mat(j, i);
+//
+//    return out;
+//}
 
-    for (int i = 0; i < mat.cols(); i++)
-        for (int j = 0; j < mat.rows(); j++)
-            out[i + j * mat.cols()] = mat(j, i);
+//Eigen::MatrixXd matmul(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
+//{
+//    if (lhs.cols() != rhs.rows())
+//    {
+//        throw std::runtime_error("psa la meme dimension");
+//    }
+//    auto m1 = eigen_to_vec(lhs);
+//    auto m2 = eigen_to_vec(rhs);
+//    auto mult = matmul(m1, m2, lhs.rows(), lhs.cols(), rhs.cols());
+//
+//    auto out = Eigen::MatrixXd(lhs.rows(), rhs.cols());
+//
+//    return vec_to_eigen(mult, lhs.rows(), rhs.cols());
+//}
 
-    return out;
-}
-
-Eigen::MatrixXd matmul(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
-{
-    if (lhs.cols() != rhs.rows())
-    {
-        throw std::runtime_error("psa la meme dimension");
-    }
-    auto m1 = eigen_to_vec(lhs);
-    auto m2 = eigen_to_vec(rhs);
-    auto mult = matmul(m1, m2, lhs.rows(), lhs.cols(), rhs.cols());
-
-    auto out = Eigen::MatrixXd(lhs.rows(), rhs.cols());
-
-    return vec_to_eigen(mult, lhs.rows(), rhs.cols());
-}
-
-Eigen::MatrixXd operator%(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
-{
-    return matmul(lhs, rhs);
-}
-
-Eigen::MatrixXd vec_to_eigen(std::vector<double> vec, size_t n_row, size_t n_col)
-{
-    auto out = Eigen::MatrixXd(n_row, n_col);
-
-    for (int i = 0; i < out.rows(); i++)
-    {
-        for (int j = 0; j < out.cols(); j++)
-        {
-            out(i, j) = vec[i * out.cols() + j];
-        }
-    }
-    return out;
-}
+//Eigen::MatrixXd operator%(const Eigen::MatrixXd &lhs, const Eigen::MatrixXd &rhs)
+//{
+//    return matmul(lhs, rhs);
+//}
+//
+//Eigen::MatrixXd vec_to_eigen(std::vector<double> vec, size_t n_row, size_t n_col)
+//{
+//    auto out = Eigen::MatrixXd(n_row, n_col);
+//
+//    for (int i = 0; i < out.rows(); i++)
+//    {
+//        for (int j = 0; j < out.cols(); j++)
+//        {
+//            out(i, j) = vec[i * out.cols() + j];
+//        }
+//    }
+//    return out;
+//}
 
 
 std::vector<double> invert_matrix(const std::vector<double> &mat, size_t len)
@@ -228,9 +228,9 @@ std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t l
 //    return Eigen::Matrix4d(inv_vec.data());
 //}
 
-Eigen::Matrix3d invert_matrix3(const Eigen::Matrix3d &mat)
-{
-    auto vec = eigen_to_vec(mat);
-    auto inv_vec = invert_matrix(vec, 3);
-    return Eigen::Matrix3d(inv_vec.data());
-}
+//Eigen::Matrix3d invert_matrix3(const Eigen::Matrix3d &mat)
+//{
+//    auto vec = eigen_to_vec(mat);
+//    auto inv_vec = invert_matrix(vec, 3);
+//    return Eigen::Matrix3d(inv_vec.data());
+//}

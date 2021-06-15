@@ -1,12 +1,13 @@
 //
 // Created by alexandre on 02/04/2021.
 //
-
 #include "../include/filter_gpu.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/matrix_tools.hpp"
 #include <algorithm>
 #include <numeric>
+#include <cmath>
+
 
 #define SEGDET_MIN_NB_VALUES_SIGMA 10
 

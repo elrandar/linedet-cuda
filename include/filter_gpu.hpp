@@ -49,17 +49,6 @@ namespace kalman_gpu
   static const kMatrix<double> C_transpose({1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}, 4, 3);
   static const kMatrix<double> Vn({SEGDET_VARIANCE_POSITION, 0, 0, 0,
                                    SEGDET_VARIANCE_THICKNESS, 0, 0, 0, SEGDET_VARIANCE_LUMINOSITY}, 3, 3);
-//  static const Eigen::Matrix<double, 4, 4>
-//      A((Eigen::Matrix<double, 4, 4>() << 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-//  static const Eigen::Matrix<double, 4, 4>
-//      A_transpose((Eigen::Matrix<double, 4, 4>() << 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-//  static const Eigen::Matrix<double, 3, 4>
-//      C((Eigen::Matrix<double, 3, 4>() << 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1).finished());
-//  static const Eigen::Matrix<double, 4, 3>
-//      C_transpose((Eigen::Matrix<double, 4, 3>() << 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1).finished());
-//  static const Eigen::Matrix<double, 3, 3> Vn((Eigen::Matrix<double, 3, 3>() << SEGDET_VARIANCE_POSITION, 0, 0, 0,
-//                                               SEGDET_VARIANCE_THICKNESS, 0, 0, 0, SEGDET_VARIANCE_LUMINOSITY)
-//                                                  .finished());
 
   /**
    * The Filter struct represents an ongoing kalman filter

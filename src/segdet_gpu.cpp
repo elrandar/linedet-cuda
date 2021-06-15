@@ -23,71 +23,7 @@ namespace kalman_gpu
         // TODO remove the check done by image.at(,) using image(,)
         return is_horizontal ? image.at({t, n}) : image.at({n, t});
     }
-
-
-    /**
-   * Determine the observation Matrix
-   * @param image
-   * @param n
-   * @param t
-   * @param n_max
-   * @param is_horizontal
-   * @return Observation Eigen matrix
-   */
-    Eigen::Matrix<double, 3, 1> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
-                                                      uint32_t n_max, bool is_horizontal, Parameters params)
-    {
-        uint32_t thickness = 0;
-        uint32_t n_max_lum = 0;
-
-        std::vector<uint8_t> luminosities_list = std::vector<uint8_t>();
-        uint32_t lumi;
-
-        // n + thickess: current position in the n-th line
-        while (n + thickness < n_max && (lumi = image_at(image, n + thickness, t, is_horizontal)) < params.max_llum)
-        {
-            luminosities_list.push_back(lumi);
-
-            if (lumi < luminosities_list[n_max_lum])
-                n_max_lum = thickness;
-
-            thickness += 1;
-        }
-
-        uint32_t n_to_skip = n + thickness;              // Position of the next n to work on
-        uint32_t max_lum = luminosities_list[n_max_lum]; // Max luminosity of the current span
-
-        // m_lum : max_luminosity of what is accepted in the span
-        uint32_t m_lum = max_lum + (params.max_llum - max_lum) * params.ratio_lum;
-        auto n_start = n;               // n_start is AT LEAST n
-        uint32_t n_end = n + thickness; // n_end is AT MOST n + thickness
-
-        if (n_end == n_max) // In case we stopped because of outOfBound value
-            n_end--;
-
-        while (luminosities_list[n - n_start] > m_lum)
-            n += 1;
-
-        while (image_at(image, n_end, t, is_horizontal) > m_lum)
-            n_end--;
-
-        n_end++;
-
-        thickness = n_end - n;
-        uint32_t position = n + thickness / 2;
-
-        if (n_end - n > luminosities_list.size())
-        {
-            thickness--;
-            n_end--;
-            position = n + thickness / 2;
-        }
-        const double mean_val = mean(luminosities_list, n - n_start, n_end - n_start);
-
-        n = n_to_skip; // Setting reference value of n
-
-        return Eigen::Matrix<double, 3, 1>(position, thickness, mean_val);
-    }
+    
 
     /**
    * Say if a value is betwen two other

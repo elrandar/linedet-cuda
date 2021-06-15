@@ -2,13 +2,13 @@
 #include <algorithm>
 #include <utility>
 
-#include "../include/filter.hpp"
+#include "../include/filter_gpu.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/observation_parser.hh"
-#include "../include/segdet.hpp"
+#include "../include/segdet_gpu.hpp"
 
 
-namespace kalman
+namespace kalman_gpu
 {
     /**
    * Give the value of the pixel in (n, t) according to traversal direction
@@ -23,71 +23,7 @@ namespace kalman
         // TODO remove the check done by image.at(,) using image(,)
         return is_horizontal ? image.at({t, n}) : image.at({n, t});
     }
-
-
-    /**
-   * Determine the observation Matrix
-   * @param image
-   * @param n
-   * @param t
-   * @param n_max
-   * @param is_horizontal
-   * @return Observation Eigen matrix
-   */
-    kMatrix<double> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
-                                                      uint32_t n_max, bool is_horizontal, Parameters params)
-    {
-        uint32_t thickness = 0;
-        uint32_t n_max_lum = 0;
-
-        std::vector<uint8_t> luminosities_list = std::vector<uint8_t>();
-        uint32_t lumi;
-
-        // n + thickess: current position in the n-th line
-        while (n + thickness < n_max && (lumi = image_at(image, n + thickness, t, is_horizontal)) < params.max_llum)
-        {
-            luminosities_list.push_back(lumi);
-
-            if (lumi < luminosities_list[n_max_lum])
-                n_max_lum = thickness;
-
-            thickness += 1;
-        }
-
-        uint32_t n_to_skip = n + thickness;              // Position of the next n to work on
-        uint32_t max_lum = luminosities_list[n_max_lum]; // Max luminosity of the current span
-
-        // m_lum : max_luminosity of what is accepted in the span
-        uint32_t m_lum = max_lum + (params.max_llum - max_lum) * params.ratio_lum;
-        auto n_start = n;               // n_start is AT LEAST n
-        uint32_t n_end = n + thickness; // n_end is AT MOST n + thickness
-
-        if (n_end == n_max) // In case we stopped because of outOfBound value
-            n_end--;
-
-        while (luminosities_list[n - n_start] > m_lum)
-            n += 1;
-
-        while (image_at(image, n_end, t, is_horizontal) > m_lum)
-            n_end--;
-
-        n_end++;
-
-        thickness = n_end - n;
-        uint32_t position = n + thickness / 2;
-
-        if (n_end - n > luminosities_list.size())
-        {
-            thickness--;
-            n_end--;
-            position = n + thickness / 2;
-        }
-        const double mean_val = mean(luminosities_list, n - n_start, n_end - n_start);
-
-        n = n_to_skip; // Setting reference value of n
-
-        return kMatrix<double>({static_cast<double>(position), static_cast<double>(thickness), mean_val}, 3, 1);
-    }
+    
 
     /**
    * Say if a value is betwen two other
@@ -96,7 +32,8 @@ namespace kalman
    * @param max
    * @return true if the value is between
    */
-    inline bool in_between(double min, double value, double max) { return min <= value && value < max; }
+    inline bool in_between(double min, double value, double max)
+    { return min <= value && value < max; }
 
     /**
    * Add a point in the under other attribute of filter
@@ -120,8 +57,9 @@ namespace kalman
    * @param t Current t
    * @param index Current index in n column
    */
-    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const kMatrix<double> &obs,
-                    const uint32_t &t, uint32_t &index, Parameters params)
+    bool find_match(Filter &filter,
+                    const kMatrix<double> &obs,
+                    const uint32_t &t, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
         uint32_t obs_thick_d2 = obs_thick / 2;
@@ -132,29 +70,16 @@ namespace kalman
 
         uint32_t obs_n_max = obs(0, 0) + obs_thick_d2 + 1;
 
-        // Only checking the acceptation for near predictions
-        //    while (index < filters.size() && filters[index].X_predicted(0, 0) - obs_n_max < 10)
-        index = 0;
-        while (index < filters.size())
+        if (accepts(filter, obs, obs_n_min, obs_n_max, params))
         {
-            Filter &f = filters[index];
-            if (accepts(f, obs, obs_n_min, obs_n_max, params))
-                accepted.push_back(&f);
-            else if (f.observation == std::nullopt && in_between(obs_n_min, f.n_min, obs_n_max) &&
-                     in_between(obs_n_min, f.n_max, obs_n_max) && f.X_predicted(1, 0) < obs_thick)
-            {
-                add_point_under_other(f, t, round(f.X_predicted(0, 0)), round(f.X_predicted(1, 0)));
-            }
-            index++;
+            return true;
         }
-
-        // Check the overflow
-        if (index == filters.size() && !filters.empty())
-            index--;
-
-        // Go back with index
-        while (index > 0 && filters[index].X_predicted(0, 0) - obs_n_min > 0)
-            index--;
+        else if (filter.observation == std::nullopt && in_between(obs_n_min, filter.n_min, obs_n_max) &&
+                       in_between(obs_n_min, filter.n_max, obs_n_max) && filter.X_predicted(1, 0) < obs_thick)
+        {
+            add_point_under_other(filter, t, round(filter.X_predicted(0, 0)), round(filter.X_predicted(1, 0)));
+        }
+        return false;
     }
 
     /**
@@ -204,7 +129,7 @@ namespace kalman
             under_other.push_back(p);
 
         auto first_part_slope =
-            std::nullopt == filter.first_slope ? filter.slopes[min_len - 1] : filter.first_slope.value();
+                std::nullopt == filter.first_slope ? filter.slopes[min_len - 1] : filter.first_slope.value();
         auto last_part_slope = filter.slopes[last_index - 1];
 
         return Segment(point, under_other, first_part_slope, last_part_slope, filter.is_horizontal);
@@ -218,13 +143,15 @@ namespace kalman
    * @param j Index of the filter to erase
    * @param fj Filter to erase
    */
-    void erase_filter(std::vector<Filter> &filters, std::vector<Segment> &segments, uint32_t min_len, uint32_t j,
+    void erase_filter(std::vector<Filter> &filters, std::vector<Segment> &segments, std::vector<bool> &keep_filter,
+                      uint32_t min_len, uint32_t j,
                       Filter &fj, Parameters params)
     {
         if (fj.last_integration - fj.first - params.minimum_for_fusion > min_len)
             segments.push_back(make_segment_from_filter(fj, min_len, params.minimum_for_fusion));
 
-        filters.erase(filters.begin() + j);
+        keep_filter[j] = false;
+//        filters.erase(filters.begin() + j);
     }
 
     /**
@@ -236,6 +163,7 @@ namespace kalman
    * @return true if happened
    */
     bool make_potential_fusion(std::vector<Filter> &filters, uint32_t index, std::vector<Segment> &segments,
+                               std::vector<bool> &keep_filter,
                                uint32_t min_len, Parameters params)
     {
         auto f = filters[index];
@@ -249,11 +177,11 @@ namespace kalman
             if (fj.observation != std::nullopt && same_observation(f, fj, params))
             {
                 if (f.first < fj.first)
-                    erase_filter(filters, segments, min_len, j, fj, params);
+                    erase_filter(filters, segments, keep_filter, min_len, j, fj, params);
                 else
                 {
                     current_filter_was_deleted = true;
-                    erase_filter(filters, segments, min_len, index, f, params);
+                    erase_filter(filters, segments, keep_filter, min_len, index, f, params);
                     break;
                 }
             }
@@ -311,9 +239,9 @@ namespace kalman
 
             if (f.observation != std::nullopt)
             {
-                if (two_matches > params.minimum_for_fusion &&
-                    make_potential_fusion(filters, index, segments, min_len_embryo, params))
-                    continue;
+//                if (two_matches > params.minimum_for_fusion &&
+////                    make_potential_fusion(filters, index, segments, min_len_embryo, params))
+//                    continue;
 
                 integrate(f, t, params);
                 compute_sigmas(f, params);
@@ -327,13 +255,11 @@ namespace kalman
                 }
 
                 filters_to_keep.push_back(f);
-            }
-            else if (filter_has_to_continue(f, t, discontinuity))
+            } else if (filter_has_to_continue(f, t, discontinuity))
             {
                 f.S = f.S_predicted;
                 filters_to_keep.push_back(f);
-            }
-            else if (f.last_integration - f.first > min_len_embryo)
+            } else if (f.last_integration - f.first > min_len_embryo)
                 segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
 
             index++;
@@ -354,8 +280,8 @@ namespace kalman
         while (i < filters.size())
         {
             auto &f = filters[i];
-            if (make_potential_fusion(filters, i, segments, min_len, params))
-                continue;
+//            if (make_potential_fusion(filters, i, segments, min_len, params))
+//                continue;
 
             if (f.last_integration - f.first > min_len)
                 segments.push_back(make_segment_from_filter(f, min_len, 0));
@@ -385,8 +311,7 @@ namespace kalman
             slope_max = params.slope_max_horizontal;
             n_max = height;
             t_max = width;
-        }
-        else
+        } else
         {
             xmult = 1;
             ymult = 0;
@@ -396,37 +321,37 @@ namespace kalman
         }
     }
 
-    /**
-   * Handle case where one or more filter matched the observation
-   * @param new_filters List of new filters
-   * @param accepted List of filters that accepts the observation
-   * @param obs
-   * @param t
-   * @param is_horizontal
-   * @param slope_max
-   * @return
-   */
-    bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
-                            const kMatrix<double> &obs, uint32_t &t, bool is_horizontal, double slope_max)
-    {
-        auto observation_s = Observation(obs, accepted.size(), t);
-
-        for (auto &f : accepted)
-        {
-            auto obs_result = choose_nearest(*f, observation_s);
-
-            if (obs_result != std::nullopt)
-            {
-                auto obs_result_value = obs_result.value();
-                obs_result_value.match_count--;
-
-                if (obs_result_value.match_count == 0)
-                    new_filters.emplace_back(is_horizontal, t, slope_max, obs_result_value.obs);
-            }
-        }
-
-        return observation_s.match_count > 1;
-    }
+//    /**
+//   * Handle case where one or more filter matched the observation
+//   * @param new_filters List of new filters
+//   * @param accepted List of filters that accepts the observation
+//   * @param obs
+//   * @param t
+//   * @param is_horizontal
+//   * @param slope_max
+//   * @return
+//   */
+//    bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
+//                            const Eigen::Matrix<double, 3, 1> &obs, uint32_t &t, bool is_horizontal, double slope_max)
+//    {
+//
+//
+//        for (auto &f : accepted)
+//        {
+//            auto obs_result =
+//
+//            if (obs_result != std::nullopt)
+//            {
+//                auto obs_result_value = obs_result.value();
+//                obs_result_value.match_count--;
+//
+//                if (obs_result_value.match_count == 0)
+//                    new_filters.emplace_back(is_horizontal, t, slope_max, obs_result_value.obs);
+//            }
+//        }
+//
+//        return observation_s.match_count > 1;
+//    }
 
     /**
    * Merge selection and new_filters in filters
@@ -446,8 +371,8 @@ namespace kalman
             filters.push_back(f);
     }
 
-    std::vector<Segment> traversal(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
-                                   uint discontinuity, Parameters params)
+    std::vector<Segment> traversal_batch(const image2d<uint8_t> &image, bool is_horizontal, uint min_len_embryo,
+                                         uint discontinuity, Parameters params)
     {
         // Usefull parameter used in the function
         uint32_t xmult, ymult;
@@ -456,54 +381,104 @@ namespace kalman
 
         set_parameters(is_horizontal, xmult, ymult, slope_max, n_max, t_max, image.size(), image.size(1), params);
 
+        std::vector<std::vector<kMatrix<double>>> observations;
+
+        auto p = obs_parser();
+
+        if (!is_horizontal)
+        {
+            auto tr_image = image.copy();
+            tr_image.transpose();
+            observations = p.parse(tr_image.width, tr_image.height, tr_image.get_buffer_const(), params.max_llum);
+        } else
+            observations = p.parse(image.width, image.height, image.get_buffer_const(), params.max_llum);
+
         auto filters = std::vector<Filter>();   // List of current filters
         auto segments = std::vector<Segment>(); // List of current segments
-        std::vector<Filter> new_filters{};
-        std::vector<Filter> selection{};
-
-        uint32_t two_matches = 0; // Number of t where two segments matched the same observation
-        // Useful to NOT check if filters has to be merged
-
-        std::vector<std::vector<std::pair<int, int>>> observations;
 
         for (uint32_t t = 0; t < t_max; t++)
         {
-            for (auto &filter : filters)
+            std::vector<bool> obs_matched{};
+            for (int i = 0; i < observations[t].size(); i++)
+                obs_matched.push_back(false);
+
+            std::vector<bool> keep_filter{};
+            for (int i = 0; i < filters.size(); i++)
+                keep_filter.push_back(false);
+
+
+            for (int i = 0; i < filters.size(); i++)
+            {
+                auto &filter = filters[i];
                 predict(filter);
 
-            new_filters.clear();
-            bool two_matches_through_n = false;
-            uint32_t filter_index = 0;
-
-
-            for (uint32_t n = 0; n < n_max; n++)
-            {
-                if (image_at(image, n, t, is_horizontal) < params.max_llum)
+                for (int j = 0; j < observations[t].size(); j++)
                 {
-                    kMatrix<double> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
-
-                    std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
-                    find_match(filters, accepted, obs, t, filter_index, params);
-                    if (accepted.empty() && obs(1, 0) < params.max_thickness)
-                        new_filters.emplace_back(is_horizontal, t, slope_max, obs);
-                    else
-                        two_matches_through_n =
-                            handle_find_filter(new_filters, accepted, obs, t, is_horizontal, slope_max) || two_matches_through_n;
+                    auto & obs = observations[t][j];
+                    bool accepted = find_match(filter, obs, t, params);
+//                    && obs(1, 0) < params.max_thickness
+                    if (accepted)
+                    {
+                        auto observation_s = Observation(obs, 1, t);
+                        choose_nearest(filter, observation_s, j);
+                    }
                 }
-            }
-            
-            if (two_matches_through_n)
-                two_matches++;
-            else
-                two_matches = 0;
 
-            // Selection for next turn
-            selection = filter_selection(filters, segments, t, two_matches, min_len_embryo, discontinuity, params);
-            // Merge selection and new_filters in filters
-            update_current_filters(filters, selection, new_filters);
+                Filter &f = filter;
+                if (filter.observation.has_value())
+                {
+                    obs_matched[filter.observation_index] = true;
+
+
+
+                    integrate(f, t, params);
+                    compute_sigmas(f, params);
+
+                    if (f.nb_current_slopes_over_slope_max > params.max_slopes_too_large)
+                    {
+                        if (f.last_integration - f.first - params.max_slopes_too_large > min_len_embryo)
+                            segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
+                    }
+                    else
+                        keep_filter[i] = true;
+                }
+                else if (filter_has_to_continue(f, t, discontinuity))
+                {
+                    f.S = f.S_predicted;
+                    keep_filter[i] = true;
+                }
+                else if (f.last_integration - f.first > min_len_embryo)
+                    segments.push_back(make_segment_from_filter(f, min_len_embryo, 0));
+
+                // sync
+            }
+
+            std::vector<Filter> filters_to_keep;
+
+            for (int i = 0; i < filters.size(); i++)
+                make_potential_fusion(filters, i, segments, keep_filter, min_len_embryo, params);
+
+            // we only push filters that have to continue
+            for (int j = 0; j < keep_filter.size(); j++)
+            {
+                if (keep_filter[j])
+                    filters_to_keep.push_back(filters[j]);
+            }
+
+            // we create a new filter for the observations that did not match
+            for (int j = 0; j < obs_matched.size(); j++)
+            {
+                if (!obs_matched[j] && observations[t][j](1, 0) < params.max_thickness)
+                    filters_to_keep.emplace_back(is_horizontal, t, slope_max, observations[t][j]);
+            }
+
+            filters = filters_to_keep;
         }
 
-        to_thrash(filters, segments, min_len_embryo, params);
+        for (auto& filter : filters)
+            segments.push_back(make_segment_from_filter(filter, min_len_embryo, 0));
+
+//        to_thrash(filters, segments, min_len_embryo, params);
 
         return segments;
     }
@@ -516,8 +491,8 @@ namespace kalman
    */
     double distance_points(const Point &p1, const Point &p2)
     {
-        int xvar = (int)p1.x - (int)p2.x;
-        int yvar = (int)p1.y - (int)p2.y;
+        int xvar = (int) p1.x - (int) p2.x;
+        int yvar = (int) p1.y - (int) p2.y;
 
         xvar *= xvar;
         yvar *= yvar;
@@ -580,8 +555,7 @@ namespace kalman
                 {
                     best_index = j;
                     best_distance = distance_link;
-                }
-                else
+                } else
                     j++;
             }
 
@@ -636,8 +610,7 @@ namespace kalman
                 if (static_cast<int>(point.y) + i < img.size(1))
                     draw_labeled_pixel(img, label, static_cast<int>(point.x), static_cast<int>(point.y + i));
             }
-        }
-        else
+        } else
         {
             for (int i = -thickness; i < static_cast<int>(thickness) + static_cast<int>(is_odd); i++)
             {
@@ -737,8 +710,8 @@ namespace kalman
         //     mln::view::transform(second_output, [](uint16_t p) -> uint8_t
         //                          { return (p != 0) ? 1 : 0; });
 
-        auto second_output_bin = second_output.copy().transform([](uint16_t p) -> uint16_t
-                                  { return (p != 0) ? 1 : 0; });
+        auto second_output_bin = second_output.copy().transform(
+                [](uint16_t p) -> uint16_t { return (p != 0) ? 1 : 0; });
 
         binarize_img(first_output);
 
@@ -758,9 +731,9 @@ namespace kalman
         //         segments[v - 3]++;
         // }
 
-        for (auto& p : intersection.domain())
+        for (auto &p : intersection.domain())
         {
-            auto v = intersection(p); 
+            auto v = intersection(p);
             if (v >= 3)
                 segments[v - 3]++;
         }
@@ -770,7 +743,7 @@ namespace kalman
         {
             double segments_ratio = 0;
             if (segments_removable[i - k].nb_pixels != 0)
-                segments_ratio = segments[i] / (double)segments_removable[i - k].nb_pixels;
+                segments_ratio = segments[i] / (double) segments_removable[i - k].nb_pixels;
             if (segments_removable[i - k].nb_pixels == 0 || segments_ratio > params.threshold_intersection)
                 segments_removable.erase(segments_removable.begin() + i - k);
             k++;
@@ -818,8 +791,8 @@ namespace kalman
         std::vector<Segment> vertical_segments;
 
 
-        horizontal_segments = traversal(image, true, min_len_embryo, discontinuity, params);
-        vertical_segments = traversal(image, false, min_len_embryo, discontinuity, params);
+        horizontal_segments = traversal_batch(image, true, min_len_embryo, discontinuity, params);
+        vertical_segments = traversal_batch(image, false, min_len_embryo, discontinuity, params);
 
 
         return std::make_pair(horizontal_segments, vertical_segments);
@@ -846,7 +819,7 @@ namespace kalman
     // Public functions
 
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity, const Parameters &params)
+    std::vector<Segment> detect_line(image2d<uint8_t> &image, int min_len, int discontinuity, const Parameters &params)
     {
         // Preprocessing not done because its mathematical morphology, and we do not want to parallellize it
         // mln::ndbuffer_image preprocessed_img = preprocess(std::move(image));
@@ -863,7 +836,7 @@ namespace kalman
         return res;
     }
 
-    std::vector<Segment> detect_line(image2d<uint8_t>& image, int min_len, int discontinuity)
+    std::vector<Segment> detect_line(image2d<uint8_t> &image, int min_len, int discontinuity)
     {
         return detect_line(image, min_len, discontinuity, Parameters());
     }

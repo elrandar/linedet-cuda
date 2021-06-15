@@ -7,24 +7,25 @@ include(CTest)
 enable_testing()
 
 find_package(CUDA REQUIRED)
-find_package(Eigen3 REQUIRED NO_MODULE)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_BUILD_TYPE Debug)
 
+add_executable(kalman-gpu 
+                src/filter.cpp 
+                src/segdet.cpp
+                src/segdet_gpu.cpp
+                src/filter_gpu.cpp
+                src/matrix_tools.cpp
+                include/filter.hpp
+                include/linearregression.hpp
+                include/parameter.hpp
+                include/segdet.hpp
+                include/segment.hpp
+                src/main.cpp)
 
-add_executable(kalman-gpu
-        src/filter.cpp
-        src/segdet.cpp
-        src/main.cpp
-        src/observation_parser.cu
-        src/observation_parser.cpp)
-
-target_link_libraries(kalman-gpu Eigen3::Eigen)
-include_directories(include)
 
 get_target_property(OUT kalman-gpu LINK_LIBRARIES)
 message(STATUS ${OUT})

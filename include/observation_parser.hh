@@ -1,5 +1,5 @@
 #pragma once
-
+#include "matrix_tools.hpp"
 #include <vector>
 #include <utility>
 #include <Eigen/Dense>

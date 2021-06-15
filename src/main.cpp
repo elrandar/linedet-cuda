@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
-#include "ppm_parser.hh"
-#include "filter.hpp"
-#include "segdet.hpp"
-#include "observation_parser.hh"
+#include "../include/ppm_parser.hh"
+#include "../include/filter.hpp"
+#include "../include/segdet.hpp"
+#include "../include/observation_parser.hh"
+#include "../include/matrix_tools.hpp"
+#include "../include/segdet_gpu.hpp"
 
 #include <iostream>
 
@@ -39,7 +41,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image Sequentially\n";
         // Sequential Line detection
-        auto out = kalman::detect_line(img, 10, 0, "seq");
+        auto out = kalman::detect_line(img, 20, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
@@ -53,7 +55,7 @@ int main(int argc, char *argv[])
         /* OLD CODE
         std::cout << "Processing Image in batches, using CPU\n";
 
-        auto out = kalman::detect_line(img, 10, 0, "batch");
+        auto out = kalman_gpu::detect_line(img, 20, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);

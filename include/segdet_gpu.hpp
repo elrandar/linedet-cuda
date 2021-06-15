@@ -5,8 +5,9 @@
 
 #include <utility>
 
-namespace kalman
+namespace kalman_gpu
 {
+    using namespace kalman;
   /**
    * Detects lines in the given image
    * @param image A ndbuffer representing the image to process (can be rgb or uint8)

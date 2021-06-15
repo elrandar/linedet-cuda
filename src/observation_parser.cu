@@ -60,7 +60,7 @@ namespace kalman {
         cache[i] = {-1, -1, false};
     }
 
-    __global__ void line_parser(int width, int height, u_int8_t *img, Eigen::Vector3d *vec, int threshold, cache_obj *cache, int line_number, unsigned int *sizes)
+    __global__ void line_parser(int width, int height, u_int8_t *img,kMatrix<double>*vec, int threshold, cache_obj *cache, int line_number, unsigned int *sizes)
     {
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= width)
@@ -84,9 +84,9 @@ namespace kalman {
         {
             if (cparams.max != -1)
             {
-                vec[sizes[i]] = Eigen::Vector3d(static_cast<double>((cparams.start + line_number) / 2),
+                vec[sizes[i]] = kMatrix<double>({static_cast<double>((cparams.start + line_number) / 2),
                                     static_cast<double>(line_number - cparams.start),
-                                    static_cast<double>(cparams.max));
+                                    static_cast<double>(cparams.max)}, 3, 1);
                 ++(sizes[i]);
             }
             cparams.max = -1;
@@ -96,14 +96,14 @@ namespace kalman {
         cache[i] = cparams;
     }
 
-    std::pair<Eigen::Vector3d *, unsigned int*>
+    std::pair<kMatrix<double> *, unsigned int*>
     obs_parser::parse_gpu3(int width, int height, std::vector<u_int8_t> &img_host, int threshold)
     {
         auto size = width * height;
 
         // Allocating memory for result array
-        Eigen::Vector3d *vec = nullptr;
-        auto err = cudaMalloc(&vec, sizeof(Eigen::Vector3d) * size);
+        kMatrix<double> *vec = nullptr;
+        auto err = cudaMalloc(&vec, sizeof(kMatrix<double>) * size);
         if (err)
             errx(1, "Cuda vec malloc error code %d", err);
 
@@ -146,9 +146,9 @@ namespace kalman {
         // - - - - - - - - - - - END ALGO - - - - - - - - - - 
 
         // Creating result array
-        Eigen::Vector3d *res = new Eigen::Vector3d[size];
+        kMatrix<double> *res = new kMatrix<double>[size];
         // Copying res onto CPU
-        err = cudaMemcpy(res, vec, size * sizeof(Eigen::Vector3d), cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(res, vec, size * sizeof(kMatrix<double>), cudaMemcpyDeviceToHost);
         if (err)
             errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -162,7 +162,7 @@ namespace kalman {
         return std::make_pair(res, host_sizes);
     }
 
-    __global__ void column_parser(int width, int height, u_int8_t *img, Eigen::Vector3d *vec, int threshold, unsigned int *sizes)
+    __global__ void column_parser(int width, int height, u_int8_t *img, kMatrix<double> *vec, int threshold, unsigned int *sizes)
     {
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= width)
@@ -175,7 +175,7 @@ namespace kalman {
         auto in_obs = false;
 
         if (max != -1) {
-            vec[vec_size] = Eigen::Vector3d(static_cast<double>((start + height) / 2),
+            vec[vec_size] = kMatrix<double>(static_cast<double>((start + height) / 2),
                                          static_cast<double>(height - start),
                                          static_cast<double>(max));
             vec_size += width;
@@ -196,7 +196,7 @@ namespace kalman {
             }
             else {
                 if (max != -1) {
-                    vec[vec_size] = Eigen::Vector3d(static_cast<double>((start + j) / 2),
+                    vec[vec_size] = kMatrix<double>(static_cast<double>((start + j) / 2),
                                         static_cast<double>(j - start),
                                         static_cast<double>(max));
                     vec_size += width;
@@ -210,7 +210,7 @@ namespace kalman {
     }
 
 
-    std::pair<Eigen::Vector3d *, unsigned int*>
+    std::pair<kMatrix<double> *, unsigned int*>
     obs_parser::parse_gpu(int width, int height, std::vector<u_int8_t> &img_host, int threshold)
     {
         auto size = width * height;
@@ -220,8 +220,8 @@ namespace kalman {
         // TODO Check error on first code line (first vector3d instanciation)
 
         // Allocating memory for result array
-        Eigen::Vector3d *vec = nullptr;
-        auto err = cudaMalloc(&vec, sizeof(Eigen::Vector3d) * size);
+        kMatrix<double> *vec = nullptr;
+        auto err = cudaMalloc(&vec, sizeof(kMatrix<double>) * size);
         if (err)
             errx(1, "Cuda vec malloc error code %d", err);
 
@@ -252,9 +252,9 @@ namespace kalman {
         column_parser<<<dimGrid, dimBlock>>>(width, height, img, vec, threshold, sizes);
 
         // Creating result array
-        Eigen::Vector3d *res = new Eigen::Vector3d[size];
+        kMatrix<double> *res = new kMatrix<double>[size];
         // Copying res onto CPU
-        err = cudaMemcpy(res, vec, size * sizeof(Eigen::Vector3d), cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(res, vec, size * sizeof(kMatrix<double>), cudaMemcpyDeviceToHost);
         if (err)
             errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -268,7 +268,7 @@ namespace kalman {
         return std::make_pair(res, host_sizes);
     }
 
-    std::pair<Eigen::Vector3d *, unsigned int*>
+    std::pair<kMatrix<double> *, unsigned int*>
     obs_parser::parse_gpu2(int width, int height, std::vector<u_int8_t> &img_host, std::ptrdiff_t stride, int threshold)
     {
         auto size = width * height;
@@ -279,8 +279,8 @@ namespace kalman {
 
         // Allocating memory for result array
         size_t pitch1 = 0;
-        Eigen::Vector3d *vec = nullptr;
-        auto err = cudaMallocPitch(&vec, &pitch1, sizeof(Eigen::Vector3d) * width, height / 2);
+        kMatrix<double> *vec = nullptr;
+        auto err = cudaMallocPitch(&vec, &pitch1, sizeof(kMatrix<double>) * width, height / 2);
         if (err)
             errx(1, "Cuda vec malloc error code %d", err);
 
@@ -312,9 +312,9 @@ namespace kalman {
         column_parser<<<dimGrid, dimBlock>>>(width, height, img, vec, threshold, sizes);
 
         // Creating result array
-        Eigen::Vector3d *res = new Eigen::Vector3d[size];
+        kMatrix<double> *res = new kMatrix<double>[size];
         // Copying res onto CPU
-        err = cudaMemcpy2D(res, stride, vec, pitch1, width * sizeof(Eigen::Vector3d), height / 2, cudaMemcpyDeviceToHost);
+        err = cudaMemcpy2D(res, stride, vec, pitch1, width * sizeof(kMatrix<double>), height / 2, cudaMemcpyDeviceToHost);
         if (err)
             errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -328,11 +328,11 @@ namespace kalman {
         return std::make_pair(res, host_sizes);
     }
 
-    std::vector<std::vector<Eigen::Vector3d>> obs_parser::parse(int width, int height, std::vector<u_int8_t> img, int threshold)
+    std::vector<std::vector<kMatrix<double>>> obs_parser::parse(int width, int height, std::vector<u_int8_t> img, int threshold)
     {
-        std::vector<std::vector<Eigen::Vector3d>> vec;
+        std::vector<std::vector<kMatrix<double>>> vec;
         for(int j = 0; j < width; j++){
-            std::vector<Eigen::Vector3d> tmp_vec;
+            std::vector<kMatrix<double>> tmp_vec;
             auto max = -1;
             //auto pos_max = -1;
             auto start = -1;

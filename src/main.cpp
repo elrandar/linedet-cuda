@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
         // Doing the exact same thing as gpu does
         std::cout << "USING CPU\n";
-        std::vector<std::vector<Eigen::Vector3d>> res;
+        std::vector<std::vector<kMatrix<double>>> res;
         auto parser = kalman::obs_parser();
 
         for (auto i = 0u; i < 100; ++i)
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     else if (mode == "--gpu")
     {
         std::cout << "USING GPU\n";
-        std::pair<Eigen::Vector3d *, unsigned int*> res;
+        std::pair<kMatrix<double> *, unsigned int*> res;
 
         for (auto i = 0u; i < 100; ++i)
             res = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 245);
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "USING GPU\n";
         auto stride = img.width * sizeof(uint8_t);
-        std::pair<Eigen::Vector3d *, unsigned int*> res;
+        std::pair<kMatrix<double> *, unsigned int*> res;
 
         for (auto i = 0u; i < 100; ++i)
             res = kalman::obs_parser::parse_gpu3(img.width, img.height, img.get_buffer(), 245);

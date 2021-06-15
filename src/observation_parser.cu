@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <err.h>
+#include "matrix_tools.hpp"
 #include "observation_parser.hh"
 #include "observation_parser.cuh"
 
@@ -175,9 +176,9 @@ namespace kalman {
         auto in_obs = false;
 
         if (max != -1) {
-            vec[vec_size] = kMatrix<double>(static_cast<double>((start + height) / 2),
+            vec[vec_size] = kMatrix<double>({static_cast<double>((start + height) / 2),
                                          static_cast<double>(height - start),
-                                         static_cast<double>(max));
+                                         static_cast<double>(max)}, 3, 1);
             vec_size += width;
         }
 
@@ -196,9 +197,9 @@ namespace kalman {
             }
             else {
                 if (max != -1) {
-                    vec[vec_size] = kMatrix<double>(static_cast<double>((start + j) / 2),
+                    vec[vec_size] = kMatrix<double>({static_cast<double>((start + j) / 2),
                                         static_cast<double>(j - start),
-                                        static_cast<double>(max));
+                                        static_cast<double>(max)}, 3, 1);
                     vec_size += width;
                 }
                 max = -1;
@@ -349,9 +350,9 @@ namespace kalman {
                 }
                 else {
                     if (max != -1) {
-                        tmp_vec.push_back({static_cast<double>((start + i) / 2),
+                        tmp_vec.push_back(kMatrix<double>({static_cast<double>((start + i) / 2),
                                             static_cast<double>(i - start),
-                                            static_cast<double>(max)});
+                                            static_cast<double>(max)}, 3, 1));
                     }
                     max = -1;
                     //pos_max = -1;
@@ -359,9 +360,9 @@ namespace kalman {
                 }
             }
             if (max != -1)
-                tmp_vec.push_back({static_cast<double>((start + height) / 2),
+                tmp_vec.push_back(kMatrix<double>({static_cast<double>((start + height) / 2),
                                     static_cast<double>(height - start),
-                                    static_cast<double>(max)});
+                                    static_cast<double>(max)}, 3, 1));
             vec.push_back(tmp_vec);
         }
         return vec;

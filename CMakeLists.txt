@@ -15,6 +15,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kalman-gpu
+                src/observation_parser.cu
                 src/filter.cpp
                 src/segdet.cpp
                 # src/segdet_gpu.cpp
@@ -27,7 +28,7 @@ add_executable(kalman-gpu
                 include/segment.hpp
                 src/main.cpp)
 
-
+include_directories(include)
 get_target_property(OUT kalman-gpu LINK_LIBRARIES)
 message(STATUS ${OUT})
 

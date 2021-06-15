@@ -12,6 +12,13 @@ public:
     int nb_rows;
     int nb_cols;
 
+    kMatrix()
+    : buffer(std::vector<double>(3)),
+    nb_rows(3),
+    nb_cols(1)
+    {
+    }
+
     kMatrix(std::vector<T> buffer, int nb_rows, int nb_cols)
             : buffer(buffer), nb_rows(nb_rows),
               nb_cols(nb_cols)

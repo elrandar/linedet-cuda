@@ -32,7 +32,7 @@ namespace kalman_gpu
    * @param max
    * @return true if the value is between
    */
-    inline bool in_between(double min, double value, double max)
+    inline bool in_between(float min, float value, float max)
     { return min <= value && value < max; }
 
     /**
@@ -58,7 +58,7 @@ namespace kalman_gpu
    * @param index Current index in n column
    */
     bool find_match(Filter &filter,
-                    const kMatrix<double> &obs,
+                    const kMatrix<float> &obs,
                     const uint32_t &t, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
@@ -301,7 +301,7 @@ namespace kalman_gpu
    * @param width Width of the image
    * @param height Height of the image
    */
-    void set_parameters(bool is_horizontal, uint32_t &xmult, uint32_t &ymult, double &slope_max, uint32_t &n_max,
+    void set_parameters(bool is_horizontal, uint32_t &xmult, uint32_t &ymult, float &slope_max, uint32_t &n_max,
                         uint32_t &t_max, uint32_t width, uint32_t height, Parameters params)
     {
         if (is_horizontal)
@@ -332,7 +332,7 @@ namespace kalman_gpu
 //   * @return
 //   */
 //    bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
-//                            const Eigen::Matrix<double, 3, 1> &obs, uint32_t &t, bool is_horizontal, double slope_max)
+//                            const Eigen::Matrix<float, 3, 1> &obs, uint32_t &t, bool is_horizontal, float slope_max)
 //    {
 //
 //
@@ -376,12 +376,12 @@ namespace kalman_gpu
     {
         // Usefull parameter used in the function
         uint32_t xmult, ymult;
-        double slope_max;
+        float slope_max;
         uint32_t n_max, t_max;
 
         set_parameters(is_horizontal, xmult, ymult, slope_max, n_max, t_max, image.size(), image.size(1), params);
 
-        std::vector<std::vector<kMatrix<double>>> observations;
+        std::vector<std::vector<kMatrix<float>>> observations;
 
         auto p = obs_parser();
 
@@ -489,7 +489,7 @@ namespace kalman_gpu
    * @param p2
    * @return
    */
-    double distance_points(const Point &p1, const Point &p2)
+    float distance_points(const Point &p1, const Point &p2)
     {
         int xvar = (int) p1.x - (int) p2.x;
         int yvar = (int) p1.y - (int) p2.y;
@@ -506,7 +506,7 @@ namespace kalman_gpu
    * @param b
    * @return
    */
-    double distance_linking(Segment &a, const Segment &b, const Parameters &params)
+    float distance_linking(Segment &a, const Segment &b, const Parameters &params)
     {
         if (std::abs(a.last_part_slope - b.first_part_slope) > params.merge_slope_variation)
             return params.merge_distance_max;
@@ -547,7 +547,7 @@ namespace kalman_gpu
             size_t j = i + 1;
 
             size_t best_index = i;
-            double best_distance = params.merge_distance_max;
+            float best_distance = params.merge_distance_max;
             while (j < segments.size())
             {
                 auto distance_link = distance_linking(segments[i], segments[j], params);
@@ -741,9 +741,9 @@ namespace kalman_gpu
         int k = 0;
         for (size_t i = 0; i < segments.size(); i++)
         {
-            double segments_ratio = 0;
+            float segments_ratio = 0;
             if (segments_removable[i - k].nb_pixels != 0)
-                segments_ratio = segments[i] / (double) segments_removable[i - k].nb_pixels;
+                segments_ratio = segments[i] / (float) segments_removable[i - k].nb_pixels;
             if (segments_removable[i - k].nb_pixels == 0 || segments_ratio > params.threshold_intersection)
                 segments_removable.erase(segments_removable.begin() + i - k);
             k++;

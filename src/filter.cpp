@@ -21,10 +21,10 @@ namespace kalman
    * Compute the standard deviation of the diven vector
    * @tparam T The type of a vector
    * @param vec The given vector
-   * @return A double that is the standard deviation of the series
+   * @return A float that is the standard deviation of the series
    */
   template <typename T>
-  double std(const std::vector<T>& vec)
+  float std(const std::vector<T>& vec)
   {
     const size_t sz = vec.size();
     if (sz == 1)
@@ -33,14 +33,14 @@ namespace kalman
     }
 
     // Calculate the mean
-    const double mean = std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
+    const float mean = std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
 
     // Now calculate the variance
-    auto variance_func = [&mean](double accumulator, const double& val) {
+    auto variance_func = [&mean](float accumulator, const float& val) {
       return accumulator + ((val - mean) * (val - mean));
     };
 
-    auto variance = std::accumulate(vec.begin(), vec.end(), 0.0, variance_func) / ((double)sz);
+    auto variance = std::accumulate(vec.begin(), vec.end(), 0.0, variance_func) / ((float)sz);
 
     auto result = sqrt(variance);
 
@@ -52,8 +52,8 @@ namespace kalman
     if (f.n_values.size() > params.min_nb_values_sigma)
     {
       f.sigma_position   = std<uint32_t>(f.n_values) + params.sigma_pos_min + f.currently_under_other.size() * 0.2;
-      f.sigma_thickness  = std<double>(f.thicknesses) * 2 + params.sigma_thickness_min;
-      f.sigma_luminosity = std<double>(f.luminosities) + params.sigma_luminosity_min;
+      f.sigma_thickness  = std<float>(f.thicknesses) * 2 + params.sigma_thickness_min;
+      f.sigma_luminosity = std<float>(f.luminosities) + params.sigma_luminosity_min;
     }
   }
 
@@ -81,14 +81,14 @@ namespace kalman
    * @param sigma The standard deviation value
    * @return true if it is in the interval, else false
    */
-  bool accepts_sigma(uint32_t prediction, uint32_t observation, double sigma)
+  bool accepts_sigma(uint32_t prediction, uint32_t observation, float sigma)
   {
     if (prediction > observation)
       return (prediction - observation) <= 3 * sigma;
     return (observation - prediction) <= 3 * sigma;
   }
 
-  bool accepts(const Filter& f, const kMatrix<double>& obs, uint32_t min, uint32_t max, Parameters params)
+  bool accepts(const Filter& f, const kMatrix<float>& obs, uint32_t min, uint32_t max, Parameters params)
   {
     if (f.n_values.size() > params.min_nb_values_sigma && obs(1, 0) / f.X_predicted(1, 0) > 1.5 &&
         std::abs(obs(1, 0) - f.X_predicted(1, 0)) > 3)
@@ -128,7 +128,7 @@ namespace kalman
    * @param f The filter for which to compute the slope
    * @return The computed slope
    */
-  double compute_slope(Filter& f)
+  float compute_slope(Filter& f)
   {
     auto X = f.t_values;
     auto Y = f.n_values;
@@ -137,7 +137,7 @@ namespace kalman
     Z[0] = X;
     Z[1] = Y;
 
-    Linear_Regression<double, uint32_t> reg{};
+    Linear_Regression<float, uint32_t> reg{};
     reg.fit(Z);
 
     auto slope = reg.b_1;
@@ -157,7 +157,7 @@ namespace kalman
    * @param observation The observation matrix to integrate
    * @param t The position at which the integration was made
    */
-  void insert_into_filters_list(Filter& f, const kMatrix<double>& observation, uint32_t t, Parameters params)
+  void insert_into_filters_list(Filter& f, const kMatrix<float>& observation, uint32_t t, Parameters params)
   {
       f.n_values.push_back(observation(0, 0));
       f.thicknesses.push_back(observation(1, 0));
@@ -197,7 +197,7 @@ namespace kalman
 
       auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
       f.S    = f.S_predicted + G * (observation - f.X_predicted);
-      auto id4 = kMatrix<double>({1, 0, 0, 0,
+      auto id4 = kMatrix<float>({1, 0, 0, 0,
                                   0, 1, 0, 0,
                                   0, 0, 1, 0,
                                   0, 0, 0, 1}, 4, 4);
@@ -206,7 +206,7 @@ namespace kalman
     insert_into_filters_list(f, observation, t, params);
 
     auto   length = f.slopes.size();
-    double second_derivative =
+    float second_derivative =
         (f.slopes[length - 1] - f.slopes[length - 2]) / (f.t_values[length - 1] - f.t_values[length - 2]);
     f.W(0, 0)          = 0.5 * second_derivative;
     f.W(1, 0)          = second_derivative;

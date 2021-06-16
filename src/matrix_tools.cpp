@@ -5,15 +5,15 @@
 #include "../include/matrix_tools.hpp"
 
 
-std::vector<double> matmul(const std::vector<double> &lhs, const std::vector<double> &rhs, size_t n, size_t p, size_t m)
+std::vector<float> matmul(const std::vector<float> &lhs, const std::vector<float> &rhs, size_t n, size_t p, size_t m)
 {
-    auto out = std::vector<double>(n * m);
+    auto out = std::vector<float>(n * m);
 
     for (size_t i = 0; i < n; i++)
     {
         for (size_t j = 0; j < m; j++)
         {
-            double sum = 0;
+            float sum = 0;
             for (size_t k = 0; k < p; k++)
             {
                 sum += lhs[k + i * p] * rhs[k * m + j];
@@ -36,7 +36,7 @@ std::vector<double> invert_matrix(const std::vector<double> &mat, size_t len)
 }
 
 
-double compute_det(const std::vector<double> &mat, size_t len)
+float compute_det(const std::vector<float> &mat, size_t len)
 {
     if (len == 4)
     {
@@ -81,11 +81,11 @@ double compute_det(const std::vector<double> &mat, size_t len)
 }
 
 
-std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t len)
+std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len)
 {
     if (len == 4)
     {
-        std::vector<double> out;
+        std::vector<float> out;
         auto &a11 = mat[0];
         auto &a12 = mat[1];
         auto &a13 = mat[2];
@@ -149,7 +149,7 @@ std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t l
         return out;
     } else if (len == 3)
     {
-        std::vector<double> out;
+        std::vector<float> out;
         auto &a = mat[0];
         auto &b = mat[1];
         auto &c = mat[2];
@@ -171,5 +171,5 @@ std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t l
         out.push_back(a * e - d * b);
         return out;
     }
-    return std::vector<double>();
+    return std::vector<float>();
 }

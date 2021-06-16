@@ -28,7 +28,7 @@ public:
 
 std::vector<double> invert_matrix(const std::vector<double> &mat, size_t len);
 
-double compute_det(const std::vector<double> &mat, size_t len);
+float compute_det(const std::vector<float> &mat, size_t len);
 
 std::vector<double> matmul(const std::vector<double> &lhs, const std::vector<double> &rhs, size_t n, size_t p,
                            size_t m);
@@ -46,12 +46,12 @@ kMatrix<T> operator+(const kMatrix<T> &lhs, const kMatrix<T> &rhs)
     {
         throw std::runtime_error("Can't add matrices with different dimensions");
     }
-    auto out_buffer = std::vector<double>(lhs.nb_cols * lhs.nb_rows);
+    auto out_buffer = std::vector<float>(lhs.nb_cols * lhs.nb_rows);
     for (int i = 0; i < lhs.nb_cols * lhs.nb_rows; i++)
     {
         out_buffer[i] = lhs.buffer[i] + rhs.buffer[i];
     }
-    return kMatrix<double>(out_buffer, lhs.nb_rows, lhs.nb_cols);
+    return kMatrix<float>(out_buffer, lhs.nb_rows, lhs.nb_cols);
 }
 
 template <typename T>
@@ -61,12 +61,12 @@ kMatrix<T> operator-(const kMatrix<T> &lhs, const kMatrix<T> &rhs)
     {
         throw std::runtime_error("Can't add matrices with different dimensions");
     }
-    auto out_buffer = std::vector<double>(lhs.nb_cols * lhs.nb_rows);
+    auto out_buffer = std::vector<float>(lhs.nb_cols * lhs.nb_rows);
     for (int i = 0; i < lhs.nb_cols * lhs.nb_rows; i++)
     {
         out_buffer[i] = lhs.buffer[i] - rhs.buffer[i];
     }
-    return kMatrix<double>(out_buffer, lhs.nb_rows, lhs.nb_cols);
+    return kMatrix<float>(out_buffer, lhs.nb_rows, lhs.nb_cols);
 }
 
 template <typename T>
@@ -91,4 +91,4 @@ kMatrix<T> matmul(const kMatrix<T> &lhs, const kMatrix<T> &rhs)
 }
 
 
-std::vector<double> get_adjugate_matrix(const std::vector<double> &mat, size_t len);
+std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len);

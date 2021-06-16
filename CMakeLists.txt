@@ -18,14 +18,9 @@ add_executable(kalman-gpu
                 src/observation_parser.cu
                 src/filter.cpp
                 src/segdet.cpp
-                # src/segdet_gpu.cpp
-                # src/filter_gpu.cpp
+                src/segdet_gpu.cpp
+                src/filter_gpu.cpp
                 src/matrix_tools.cpp
-                include/filter.hpp
-                include/linearregression.hpp
-                include/parameter.hpp
-                include/segdet.hpp
-                include/segment.hpp
                 src/main.cpp)
 
 include_directories(include)

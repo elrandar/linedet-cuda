@@ -92,7 +92,7 @@ template <typename T>
 kMatrix<T> invert_matrix3(const kMatrix<T> &mat)
 {
     auto inv_buf = invert_matrix(mat.buffer, 3);
-    return kMatrix(inv_buf, 3, 3);
+    return kMatrix<double>(inv_buf, 3, 3);
 }
 
 template <typename T>

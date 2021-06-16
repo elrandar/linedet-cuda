@@ -14,9 +14,9 @@ namespace kalman {
         auto in_obs = false;
 
         if (max != -1)
-            tmp_vec.emplace_back(static_cast<double>((start + height) / 2),
-                                static_cast<double>(height - start),
-                                static_cast<double>(max));
+            tmp_vec.emplace_back(static_cast<float>((start + height) / 2),
+                                static_cast<float>(height - start),
+                                static_cast<float>(max));
         for (int i = 0; i < height; ++i) {
             if (img[i * width + j] < threshold) {
                 if (img[i * width + j] > max) {
@@ -29,9 +29,9 @@ namespace kalman {
             }
             else {
                 if (max != -1) {
-                    tmp_vec.emplace_back(static_cast<double>((start + i) / 2),
-                                        static_cast<double>(unsigned i - start),
-                                        static_cast<double>(max));
+                    tmp_vec.emplace_back(static_cast<float>((start + i) / 2),
+                                        static_cast<float>(unsigned i - start),
+                                        static_cast<float>(max));
                 }
                 max = -1;
                 in_obs = false;
@@ -62,7 +62,7 @@ namespace kalman {
         cache[i] = {-1, -1, false};
     }
 
-    // __global__ void line_parser(int width, int height, u_int8_t *img,kMatrix<double>*vec, int threshold, cache_obj *cache, int line_number, unsigned int *sizes)
+    // __global__ void line_parser(int width, int height, u_int8_t *img,kMatrix<float>*vec, int threshold, cache_obj *cache, int line_number, unsigned int *sizes)
     // {
     //     int i = blockIdx.x * blockDim.x + threadIdx.x;
     //     if (i >= width)
@@ -86,9 +86,9 @@ namespace kalman {
     //     {
     //         if (cparams.max != -1)
     //         {
-    //             vec[sizes[i]] = kMatrix<double>({static_cast<double>((cparams.start + line_number) / 2),
-    //                                 static_cast<double>(line_number - cparams.start),
-    //                                 static_cast<double>(cparams.max)}, 3, 1);
+    //             vec[sizes[i]] = kMatrix<float>({static_cast<float>((cparams.start + line_number) / 2),
+    //                                 static_cast<float>(line_number - cparams.start),
+    //                                 static_cast<float>(cparams.max)}, 3, 1);
     //             ++(sizes[i]);
     //         }
     //         cparams.max = -1;
@@ -98,14 +98,14 @@ namespace kalman {
     //     cache[i] = cparams;
     // }
 
-    // std::pair<kMatrix<double> *, unsigned int*>
+    // std::pair<kMatrix<float> *, unsigned int*>
     // obs_parser::parse_gpu3(int width, int height, std::vector<u_int8_t> &img_host, int threshold)
     // {
     //     auto size = width * height;
 
     //     // Allocating memory for result array
-    //     kMatrix<double> *vec = nullptr;
-    //     auto err = cudaMalloc(&vec, sizeof(kMatrix<double>) * size);
+    //     kMatrix<float> *vec = nullptr;
+    //     auto err = cudaMalloc(&vec, sizeof(kMatrix<float>) * size);
     //     if (err)
     //         errx(1, "Cuda vec malloc error code %d", err);
 
@@ -148,9 +148,9 @@ namespace kalman {
     //     // - - - - - - - - - - - END ALGO - - - - - - - - - - 
 
     //     // Creating result array
-    //     kMatrix<double> *res = new kMatrix<double>[size];
+    //     kMatrix<float> *res = new kMatrix<float>[size];
     //     // Copying res onto CPU
-    //     err = cudaMemcpy(res, vec, size * sizeof(kMatrix<double>), cudaMemcpyDeviceToHost);
+    //     err = cudaMemcpy(res, vec, size * sizeof(kMatrix<float>), cudaMemcpyDeviceToHost);
     //     if (err)
     //         errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -177,9 +177,9 @@ namespace kalman {
         auto in_obs = false;
 
         if (max != -1) {
-            vec[vec_size].position = static_cast<double>((start + height) / 2);
-            vec[vec_size].thickness = static_cast<double>(height - start);
-            vec[vec_size].luminosity = static_cast<double>(max);
+            vec[vec_size].position = static_cast<float>((start + height) / 2);
+            vec[vec_size].thickness = static_cast<float>(height - start);
+            vec[vec_size].luminosity = static_cast<float>(max);
                                      
             vec_size += width;
         }
@@ -199,9 +199,9 @@ namespace kalman {
             }
             else {
                 if (max != -1) {
-                    vec[vec_size].position = static_cast<double>((start + j) / 2);
-                    vec[vec_size].thickness =  static_cast<double>(j - start);
-                    vec[vec_size].luminosity = static_cast<double>(max);
+                    vec[vec_size].position = static_cast<float>((start + j) / 2);
+                    vec[vec_size].thickness =  static_cast<float>(j - start);
+                    vec[vec_size].luminosity = static_cast<float>(max);
                     vec_size += width;
                 }
                 max = -1;
@@ -224,7 +224,7 @@ namespace kalman {
 
         // Allocating memory for result array
         obs_elem *vec = nullptr;
-        auto err = cudaMalloc(&vec, sizeof(obs_elem) * size);
+        auto err = cudaMalloc(&vec, sizeof(obs_elem) * size / 2);
         if (err)
             errx(1, "Cuda vec malloc error code %d", err);
 
@@ -255,9 +255,9 @@ namespace kalman {
         column_parser<<<dimGrid, dimBlock>>>(width, height, img, vec, threshold, sizes);
 
         // Creating result array
-        obs_elem *res = new obs_elem[size];
+        obs_elem *res = new obs_elem[size / 2];
         // Copying res onto CPU
-        err = cudaMemcpy(res, vec, size * sizeof(obs_elem), cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(res, vec, size * sizeof(obs_elem) / 2, cudaMemcpyDeviceToHost);
         if (err)
             errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -268,10 +268,19 @@ namespace kalman {
         if (err)
             errx(1, "Cuda sizes-host memcpy error code %d", err);
 
+        err = cudaFree(vec);
+        if (err)
+            errx(1, "Cuda vec free error code %d", err);
+        err = cudaFree(img);
+        if (err)
+            errx(1, "Cuda img free error code %d", err);
+        err =cudaFree(sizes);
+        if (err)
+            errx(1, "Cuda sizes free error code %d", err);
         return std::make_pair(res, host_sizes);
     }
 
-    // std::pair<kMatrix<double> *, unsigned int*>
+    // std::pair<kMatrix<float> *, unsigned int*>
     // obs_parser::parse_gpu2(int width, int height, std::vector<u_int8_t> &img_host, std::ptrdiff_t stride, int threshold)
     // {
     //     auto size = width * height;
@@ -282,8 +291,8 @@ namespace kalman {
 
     //     // Allocating memory for result array
     //     size_t pitch1 = 0;
-    //     kMatrix<double> *vec = nullptr;
-    //     auto err = cudaMallocPitch(&vec, &pitch1, sizeof(kMatrix<double>) * width, height / 2);
+    //     kMatrix<float> *vec = nullptr;
+    //     auto err = cudaMallocPitch(&vec, &pitch1, sizeof(kMatrix<float>) * width, height / 2);
     //     if (err)
     //         errx(1, "Cuda vec malloc error code %d", err);
 
@@ -315,9 +324,9 @@ namespace kalman {
     //     column_parser<<<dimGrid, dimBlock>>>(width, height, img, vec, threshold, sizes);
 
     //     // Creating result array
-    //     kMatrix<double> *res = new kMatrix<double>[size];
+    //     kMatrix<float> *res = new kMatrix<float>[size];
     //     // Copying res onto CPU
-    //     err = cudaMemcpy2D(res, stride, vec, pitch1, width * sizeof(kMatrix<double>), height / 2, cudaMemcpyDeviceToHost);
+    //     err = cudaMemcpy2D(res, stride, vec, pitch1, width * sizeof(kMatrix<float>), height / 2, cudaMemcpyDeviceToHost);
     //     if (err)
     //         errx(1, "Cuda vec-host memcpy error code %d", err);
 
@@ -331,11 +340,11 @@ namespace kalman {
     //     return std::make_pair(res, host_sizes);
     // }
 
-    std::vector<std::vector<kMatrix<double>>> obs_parser::parse(int width, int height, std::vector<u_int8_t> img, int threshold)
+    std::vector<std::vector<kMatrix<float>>> obs_parser::parse(int width, int height, std::vector<u_int8_t> img, int threshold)
     {
-        std::vector<std::vector<kMatrix<double>>> vec;
+        std::vector<std::vector<kMatrix<float>>> vec;
         for(int j = 0; j < width; j++){
-            std::vector<kMatrix<double>> tmp_vec;
+            std::vector<kMatrix<float>> tmp_vec;
             auto max = -1;
             //auto pos_max = -1;
             auto start = -1;
@@ -352,9 +361,9 @@ namespace kalman {
                 }
                 else {
                     if (max != -1) {
-                        tmp_vec.push_back(kMatrix<double>({static_cast<double>((start + i) / 2),
-                                            static_cast<double>(i - start),
-                                            static_cast<double>(max)}, 3, 1));
+                        tmp_vec.push_back(kMatrix<float>({static_cast<float>((start + i) / 2),
+                                            static_cast<float>(i - start),
+                                            static_cast<float>(max)}, 3, 1));
                     }
                     max = -1;
                     //pos_max = -1;
@@ -362,9 +371,9 @@ namespace kalman {
                 }
             }
             if (max != -1)
-                tmp_vec.push_back(kMatrix<double>({static_cast<double>((start + height) / 2),
-                                    static_cast<double>(height - start),
-                                    static_cast<double>(max)}, 3, 1));
+                tmp_vec.push_back(kMatrix<float>({static_cast<float>((start + height) / 2),
+                                    static_cast<float>(height - start),
+                                    static_cast<float>(max)}, 3, 1));
             vec.push_back(tmp_vec);
         }
         return vec;

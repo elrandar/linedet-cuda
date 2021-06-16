@@ -7,10 +7,10 @@
 namespace kalman
 {
   template <typename T>
-  double mean(std::vector<T> array, size_t start, size_t end)
+  float mean(std::vector<T> array, size_t start, size_t end)
   {
     auto it_end = end == 0 ? array.end() : array.begin() + end;
-    return std::accumulate(array.begin() + start, it_end, 0.0) / static_cast<double>(array.size());
+    return std::accumulate(array.begin() + start, it_end, 0.0) / static_cast<float>(array.size());
   }
 
   template <typename X, typename Z>

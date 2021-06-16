@@ -34,7 +34,7 @@ namespace kalman
    * @param is_horizontal
    * @return Observation Eigen matrix
    */
-    kMatrix<double> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
+    kMatrix<float> determine_observation(const image2d<uint8_t> &image, uint32_t &n, uint32_t t,
                                                       uint32_t n_max, bool is_horizontal, Parameters params)
     {
         uint32_t thickness = 0;
@@ -82,11 +82,11 @@ namespace kalman
             n_end--;
             position = n + thickness / 2;
         }
-        const double mean_val = mean(luminosities_list, n - n_start, n_end - n_start);
+        const float mean_val = mean(luminosities_list, n - n_start, n_end - n_start);
 
         n = n_to_skip; // Setting reference value of n
 
-        return kMatrix<double>({static_cast<double>(position), static_cast<double>(thickness), mean_val}, 3, 1);
+        return kMatrix<float>({static_cast<float>(position), static_cast<float>(thickness), mean_val}, 3, 1);
     }
 
     /**
@@ -96,7 +96,7 @@ namespace kalman
    * @param max
    * @return true if the value is between
    */
-    inline bool in_between(double min, double value, double max) { return min <= value && value < max; }
+    inline bool in_between(float min, float value, float max) { return min <= value && value < max; }
 
     /**
    * Add a point in the under other attribute of filter
@@ -120,7 +120,7 @@ namespace kalman
    * @param t Current t
    * @param index Current index in n column
    */
-    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const kMatrix<double> &obs,
+    void find_match(std::vector<Filter> &filters, std::vector<Filter *> &accepted, const kMatrix<float> &obs,
                     const uint32_t &t, uint32_t &index, Parameters params)
     {
         uint32_t obs_thick = obs(1, 0);
@@ -375,7 +375,7 @@ namespace kalman
    * @param width Width of the image
    * @param height Height of the image
    */
-    void set_parameters(bool is_horizontal, uint32_t &xmult, uint32_t &ymult, double &slope_max, uint32_t &n_max,
+    void set_parameters(bool is_horizontal, uint32_t &xmult, uint32_t &ymult, float &slope_max, uint32_t &n_max,
                         uint32_t &t_max, uint32_t width, uint32_t height, Parameters params)
     {
         if (is_horizontal)
@@ -407,7 +407,7 @@ namespace kalman
    * @return
    */
     bool handle_find_filter(std::vector<Filter> &new_filters, std::vector<Filter *> &accepted,
-                            const kMatrix<double> &obs, uint32_t &t, bool is_horizontal, double slope_max)
+                            const kMatrix<float> &obs, uint32_t &t, bool is_horizontal, float slope_max)
     {
         auto observation_s = Observation(obs, accepted.size(), t);
 
@@ -451,7 +451,7 @@ namespace kalman
     {
         // Usefull parameter used in the function
         uint32_t xmult, ymult;
-        double slope_max;
+        float slope_max;
         uint32_t n_max, t_max;
 
         set_parameters(is_horizontal, xmult, ymult, slope_max, n_max, t_max, image.size(), image.size(1), params);
@@ -480,7 +480,7 @@ namespace kalman
             {
                 if (image_at(image, n, t, is_horizontal) < params.max_llum)
                 {
-                    kMatrix<double> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
+                    kMatrix<float> obs = determine_observation(image, n, t, n_max, is_horizontal, params);
 
                     std::vector<Filter *> accepted{}; // List of accepted filters by the current observation obs
                     find_match(filters, accepted, obs, t, filter_index, params);
@@ -514,7 +514,7 @@ namespace kalman
    * @param p2
    * @return
    */
-    double distance_points(const Point &p1, const Point &p2)
+    float distance_points(const Point &p1, const Point &p2)
     {
         int xvar = (int)p1.x - (int)p2.x;
         int yvar = (int)p1.y - (int)p2.y;
@@ -531,7 +531,7 @@ namespace kalman
    * @param b
    * @return
    */
-    double distance_linking(Segment &a, const Segment &b, const Parameters &params)
+    float distance_linking(Segment &a, const Segment &b, const Parameters &params)
     {
         if (std::abs(a.last_part_slope - b.first_part_slope) > params.merge_slope_variation)
             return params.merge_distance_max;
@@ -572,7 +572,7 @@ namespace kalman
             size_t j = i + 1;
 
             size_t best_index = i;
-            double best_distance = params.merge_distance_max;
+            float best_distance = params.merge_distance_max;
             while (j < segments.size())
             {
                 auto distance_link = distance_linking(segments[i], segments[j], params);
@@ -768,9 +768,9 @@ namespace kalman
         int k = 0;
         for (size_t i = 0; i < segments.size(); i++)
         {
-            double segments_ratio = 0;
+            float segments_ratio = 0;
             if (segments_removable[i - k].nb_pixels != 0)
-                segments_ratio = segments[i] / (double)segments_removable[i - k].nb_pixels;
+                segments_ratio = segments[i] / (float)segments_removable[i - k].nb_pixels;
             if (segments_removable[i - k].nb_pixels == 0 || segments_ratio > params.threshold_intersection)
                 segments_removable.erase(segments_removable.begin() + i - k);
             k++;

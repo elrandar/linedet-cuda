@@ -22,4 +22,4 @@ if __name__ == "__main__":
     newcolors[1, :] = redCm
     newcmp = matplotlib.colors.ListedColormap(newcolors)
 
-    plt.imsave("out_py.tiff", img, cmap=newcmp)
+    plt.imsave("out_py.png", img, cmap=newcmp)

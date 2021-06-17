@@ -7,6 +7,7 @@
 #include "../include/observation_parser.hh"
 #include "../include/matrix_tools.hpp"
 #include "../include/segdet_gpu.hpp"
+#include "../include/test_gpu.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -64,7 +65,37 @@ int main(int argc, char *argv[])
     }
     else if (mode == "--gpu")
     {
+        auto p = obs_parser();
+        auto observations = p.parse(img.width, img.height, img.get_buffer_const(), 225);
+        
+        std::vector<float> observations_array{};
+        std::vector<int> obs_per_col_array{0};
+
+        int col_obs_sum = 0;
+        for (auto col : observations)
+        {
+            for (auto obs : col)
+            {
+                col_obs_sum += 1;
+                observations_array.push_back(obs(0, 0));
+                observations_array.push_back(obs(1, 0));
+                observations_array.push_back(obs(2, 0));
+            }
+            obs_per_col_array.push_back(col_obs_sum);
+        }
+
         std::cout << "Processing Image in parallel, using GPU\n";
+        
+
+        traversal_gpu(observations_array.data(),
+                      obs_per_col_array.data(),
+                      img.width,
+                      img.height / 2,
+                      observations_array.size() / 3);
+        // auto out_img = kalman::image2d<uint8_t>(img.width, img.height);
+        // out_img.set_buffer(std::vector<uint8_t>(host_buff, 
+        //     host_buff + img.width * img.height));
+        // img.imsave("out.pgm");
     }
     else
         throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");

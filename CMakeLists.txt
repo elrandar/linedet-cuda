@@ -14,11 +14,12 @@ set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kalman-gpu 
+                src/test_gpu.cu
                 src/filter.cpp 
                 src/segdet.cpp
-                src/segdet_gpu.cpp
-                src/filter_gpu.cpp
-                src/matrix_tools.cpp
+                src/segdet_gpu.cu
+                src/filter_gpu.cu
+                src/matrix_tools.cu
                 include/filter.hpp
                 include/linearregression.hpp
                 include/parameter.hpp
@@ -26,7 +27,8 @@ add_executable(kalman-gpu
                 include/segment.hpp
                 src/main.cpp)
 
-                
+set_property(TARGET kalman-gpu PROPERTY CUDA_ARCHITECTURES 61)
+
 include_directories(include)
 
 

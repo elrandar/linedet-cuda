@@ -25,7 +25,7 @@ std::vector<float> matmul(const std::vector<float> &lhs, const std::vector<float
 }
 
 
-std::vector<double> invert_matrix(const std::vector<double> &mat, size_t len)
+std::vector<float> invert_matrix(const std::vector<float> &mat, size_t len)
 {
     auto det = compute_det(mat, len);
     auto adj = get_adjugate_matrix(mat, len);

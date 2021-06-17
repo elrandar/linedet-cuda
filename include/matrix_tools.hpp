@@ -26,11 +26,11 @@ public:
     }
 };
 
-std::vector<double> invert_matrix(const std::vector<double> &mat, size_t len);
+std::vector<float> invert_matrix(const std::vector<float> &mat, size_t len);
 
 float compute_det(const std::vector<float> &mat, size_t len);
 
-std::vector<double> matmul(const std::vector<double> &lhs, const std::vector<double> &rhs, size_t n, size_t p,
+std::vector<float> matmul(const std::vector<float> &lhs, const std::vector<float> &rhs, size_t n, size_t p,
                            size_t m);
 
 template <typename T>

@@ -5,7 +5,7 @@
 
 #include <utility>
 
-namespace kalman_gpu
+namespace kalman_batch
 {
     using namespace kalman;
   /**

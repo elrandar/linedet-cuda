@@ -16,7 +16,7 @@
 #define SEGDET_DEFAULT_SIGMA_THK 2
 #define SEGDET_DEFAULT_SIGMA_LUM 57
 
-namespace kalman_gpu
+namespace kalman_batch
 {
     using namespace kalman;
   /**

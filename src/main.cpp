@@ -6,7 +6,7 @@
 #include "../include/segdet.hpp"
 #include "../include/observation_parser.hh"
 #include "../include/matrix_tools.hpp"
-#include "../include/segdet_gpu.hpp"
+#include "../include/segdet_batch.hpp"
 #include "../include/test_gpu.hpp"
 
 int main(int argc, char *argv[])
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Processing Image in batches, using CPU\n";
 
-        auto out = kalman_gpu::detect_line(img, 20, 0);
+        auto out = kalman_batch::detect_line(img, 20, 0);
 
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);

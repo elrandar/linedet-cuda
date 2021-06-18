@@ -2,13 +2,13 @@
 #include <algorithm>
 #include <utility>
 
-#include "../include/filter_gpu.hpp"
+#include "../include/filter_batch.hpp"
 #include "../include/linearregression.hpp"
 #include "../include/observation_parser.hh"
-#include "../include/segdet_gpu.hpp"
+#include "../include/segdet_batch.hpp"
 
 
-namespace kalman_gpu
+namespace kalman_batch
 {
     /**
    * Give the value of the pixel in (n, t) according to traversal direction

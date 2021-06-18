@@ -15,11 +15,13 @@ set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(kalman-gpu 
                 src/test_gpu.cu
+                # src/matrix_tools_gpu.cu
+                # src/filter_gpu.cu
                 src/filter.cpp 
                 src/segdet.cpp
-                src/segdet_gpu.cu
-                src/filter_gpu.cu
-                src/matrix_tools.cu
+                src/segdet_batch.cpp
+                src/filter_batch.cpp
+                src/matrix_tools.cpp
                 include/filter.hpp
                 include/linearregression.hpp
                 include/parameter.hpp

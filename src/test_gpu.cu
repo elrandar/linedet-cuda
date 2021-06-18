@@ -1,5 +1,5 @@
 #include "test_gpu.hpp"
-#include "segment_gpu.cuh"
+// #include "segment_gpu.cuh"
 #include <cassert>
 #include <iostream>
 

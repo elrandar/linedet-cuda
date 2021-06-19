@@ -3,7 +3,9 @@
 #include <vector>
 #include <iostream>
 
-
+namespace kalman
+{
+ 
 template<typename T>
 class kMatrix
 {
@@ -92,3 +94,5 @@ kMatrix<T> matmul(const kMatrix<T> &lhs, const kMatrix<T> &rhs)
 
 
 std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len);
+   
+}

@@ -2,14 +2,31 @@
 // Created by alexandre on 11/06/2021.
 //
 
-#include "../include/matrix_tools.hpp"
+#include "../include/matrix_tools_gpu.cuh"
 
-namespace kalman
+namespace kalman_gpu
 {
-std::vector<float> matmul(const std::vector<float> &lhs, const std::vector<float> &rhs, size_t n, size_t p, size_t m)
+__device__ float* matmul(float* lhs, float* rhs, float* out, size_t n, size_t p,
+                           size_t m)
 {
-    auto out = std::vector<float>(n * m);
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < m; j++)
+        {
+            float sum = 0;
+            for (size_t k = 0; k < p; k++)
+            {
+                sum += lhs[k + i * p] * rhs[k * m + j];
+            }
+            out[j + i * m] = sum;
+        }
+    }
+    return out;
+}
 
+__device__ float* matmul(const float* lhs, const float* rhs, float* out, const size_t n, const size_t p,
+                           const size_t m)
+{
     for (size_t i = 0; i < n; i++)
     {
         for (size_t j = 0; j < m; j++)
@@ -26,18 +43,21 @@ std::vector<float> matmul(const std::vector<float> &lhs, const std::vector<float
 }
 
 
-std::vector<float> invert_matrix(const std::vector<float> &mat, size_t len)
+__device__ float* invert_matrix(float* mat, float* out, size_t len)
 {
     auto det = compute_det(mat, len);
-    auto adj = get_adjugate_matrix(mat, len);
-    for (auto &elm : adj)
-        elm = elm / det;
+    get_adjugate_matrix(mat, out, len);
 
-    return adj;
+    for (int i = 0; i < len * len; i++)
+    {
+        out[i] = out[i] / det;
+    }
+
+    return out;
 }
 
 
-float compute_det(const std::vector<float> &mat, size_t len)
+__device__ float compute_det(float* mat, size_t len)
 {
     if (len == 4)
     {
@@ -82,11 +102,10 @@ float compute_det(const std::vector<float> &mat, size_t len)
 }
 
 
-std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len)
+__device__ float* get_adjugate_matrix(float* mat, float* out, size_t len)
 {
     if (len == 4)
     {
-        std::vector<float> out;
         auto &a11 = mat[0];
         auto &a12 = mat[1];
         auto &a13 = mat[2];
@@ -104,53 +123,52 @@ std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len
         auto &a43 = mat[14];
         auto &a44 = mat[15];
 
-        out.push_back(a22 * a33 * a44 + a23 * a34 * a42 + a24 * a32 * a43
+        out[0] = (a22 * a33 * a44 + a23 * a34 * a42 + a24 * a32 * a43
                       - a24 * a33 * a42 - a23 * a32 * a44 - a22 * a34 * a43);
-        out.push_back(-a12 * a33 * a44 - a13 * a34 * a42 - a14 * a32 * a43
+        out[1] = (-a12 * a33 * a44 - a13 * a34 * a42 - a14 * a32 * a43
                       + a14 * a33 * a42 + a13 * a32 * a44 + a12 * a34 * a43);
-        out.push_back(a12 * a23 * a44 + a13 * a24 * a42 + a14 * a22 * a43
+        out[2] = (a12 * a23 * a44 + a13 * a24 * a42 + a14 * a22 * a43
                       - a14 * a23 * a42 - a13 * a22 * a44 - a12 * a24 * a43);
-        out.push_back(-a12 * a23 * a34 - a13 * a24 * a32 - a14 * a22 * a33
+        out[3] = (-a12 * a23 * a34 - a13 * a24 * a32 - a14 * a22 * a33
                       + a14 * a23 * a32 + a13 * a22 * a34 + a12 * a24 * a33);
-        out.push_back(-a21 * a31 * a44 - a23 * a34 * a41 - a24 * a31 * a43
+        out[4] = (-a21 * a31 * a44 - a23 * a34 * a41 - a24 * a31 * a43
                       + a24 * a33 * a41 + a23 * a31 * a44 + a21 * a34 * a43);
-        out.push_back(a11 * a33 * a44 + a13 * a34 * a41 + a14 * a31 * a43
+        out[5] = (a11 * a33 * a44 + a13 * a34 * a41 + a14 * a31 * a43
                       - a14 * a33 * a41 - a13 * a31 * a44 - a11 * a34 * a43);
 
 
-        out.push_back(-a11 * a23 * a44 - a13 * a24 * a41 - a14 * a21 * a43
+        out[6] = (-a11 * a23 * a44 - a13 * a24 * a41 - a14 * a21 * a43
                       + a14 * a23 * a41 + a13 * a21 * a44 + a11 * a24 * a43);
 
 
-        out.push_back(a11 * a23 * a34 + a13 * a24 * a31 + a14 * a21 * a33
+        out[7] = (a11 * a23 * a34 + a13 * a24 * a31 + a14 * a21 * a33
                       - a14 * a23 * a31 - a13 * a21 * a34 - a11 * a24 * a33);
-        out.push_back(a21 * a32 * a44 + a22 * a34 * a41 + a24 * a31 * a42
+        out[8] = (a21 * a32 * a44 + a22 * a34 * a41 + a24 * a31 * a42
                       - a24 * a32 * a41 - a22 * a31 * a44 - a21 * a34 * a42);
-        out.push_back(-a11 * a32 * a44 - a12 * a34 * a41 - a14 * a31 * a42
+        out[9] = (-a11 * a32 * a44 - a12 * a34 * a41 - a14 * a31 * a42
                       + a14 * a32 * a41 + a12 * a31 * a44 + a11 * a34 * a42);
-        out.push_back(a11 *
+        out[10] = (a11 *
                       a22 * a44 + a12 * a24 * a41 + a14 * a21 * a42
                       - a14 * a22 * a41 - a12 * a21 * a44 - a11 * a24 * a42);
-        out.push_back(-a11 * a22 * a34 - a12 * a24 * a31 - a14 * a21 * a32
+        out[11] = (-a11 * a22 * a34 - a12 * a24 * a31 - a14 * a21 * a32
                       + a14 * a22 * a31 + a12 * a21 * a34 + a11 * a24 * a32);
-        out.push_back(-a21 * a32 * a43 - a22 * a33 * a41 - a23 * a31 * a42
+        out[12] = (-a21 * a32 * a43 - a22 * a33 * a41 - a23 * a31 * a42
                       + a23 * a32 * a41 + a22 * a31 * a43 + a21 * a33 * a42);
 
 
-        out.push_back(a11 * a32 * a43 + a12 * a33 * a41 + a13 * a31 * a42
+        out[13] = (a11 * a32 * a43 + a12 * a33 * a41 + a13 * a31 * a42
                       - a13 * a32 * a41 - a12 * a31 * a43 - a11 * a33 * a42);
 
-        out.push_back(-a11 * a22 * a43 - a12 * a23 * a41 - a13 * a21 * a42
+        out[14] = (-a11 * a22 * a43 - a12 * a23 * a41 - a13 * a21 * a42
                       + a13 * a22 * a41 + a12 * a21 * a43 + a11 * a23 * a42);
 
 
-        out.push_back(a11 * a22 * a33 + a12 * a23 * a31 + a13 * a21 * a32
+        out[15] = (a11 * a22 * a33 + a12 * a23 * a31 + a13 * a21 * a32
                       - a13 * a22 * a31 - a12 * a21 * a33 - a11
                                                             * a23 * a32);
         return out;
     } else if (len == 3)
     {
-        std::vector<float> out;
         auto &a = mat[0];
         auto &b = mat[1];
         auto &c = mat[2];
@@ -161,17 +179,17 @@ std::vector<float> get_adjugate_matrix(const std::vector<float> &mat, size_t len
         auto &h = mat[7];
         auto &i = mat[8];
 
-        out.push_back(e * i - f * h);
-        out.push_back(-b * i + h * c);
-        out.push_back(b * f - e * c);
-        out.push_back(-d * i + g * f);
-        out.push_back(a * i - c * g);
-        out.push_back(-a * f + d * c);
-        out.push_back(d * h - g * e);
-        out.push_back(-a * h + g * b);
-        out.push_back(a * e - d * b);
+        out[0] = (e * i - f * h);
+        out[1] = (-b * i + h * c);
+        out[2] = (b * f - e * c);
+        out[3] = (-d * i + g * f);
+        out[4] = (a * i - c * g);
+        out[5] = (-a * f + d * c);
+        out[6] = (d * h - g * e);
+        out[7] = (-a * h + g * b);
+        out[8] = (a * e - d * b);
         return out;
     }
-    return std::vector<float>();
+    return nullptr;
 }
 }

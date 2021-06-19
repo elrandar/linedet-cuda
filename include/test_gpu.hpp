@@ -1,16 +1,22 @@
 #pragma once
+
+#include "matrix_tools_gpu.cuh"
 #include <cinttypes>
 
 
 struct Filter
 {
     bool isHorizontal;
-    float S[4]; // 4 x 1
-    float W[4]; // 4 x 1
-    float N[3]; // 3 x 1
-    float H[16]; // 4 x 4
-    float S_predicted[4];
-    float X_predicted[3];
+    kalman_gpu::kMatrix<float, 4, 1> S;
+    kalman_gpu::kMatrix<float, 4, 1> W;
+    kalman_gpu::kMatrix<float, 3, 1> N;
+    kalman_gpu::kMatrix<float, 4, 4> H;
+    // float S[4]; // 4 x 1
+    // float W[4]; // 4 x 1
+    // float N[3]; // 3 x 1
+    // float H[16]; // 4 x 4
+    kalman_gpu::kMatrix<float, 4, 1> S_predicted;
+    kalman_gpu::kMatrix<float, 3, 1> X_predicted;
 
     int obs_index;
     int obs_distance;
@@ -21,7 +27,7 @@ struct Filter
     float sigma_thickness;
     float sigma_luminosity;
     Filter() = default;
-    Filter(float position, float thickness, float luminosity)
+    CUDA_CALLABLE_MEMBER Filter(float position, float thickness, float luminosity)
     : 
       obs_index(-1),
       obs_distance(0),
@@ -30,20 +36,20 @@ struct Filter
       sigma_thickness(2),
       sigma_luminosity(57)
       {
-        S[0] = position;
-        S[1] = 0;
-        S[2] = thickness;
-        S[3] = luminosity;
+        S(0, 0) = position;
+        S(1, 0) = 0;
+        S(2, 0) = thickness;
+        S(3, 0) = luminosity;
         for (int i = 0; i < 4; i++)
-          W[i] = 0;        
+          W.buffer[i] = 0;        
         for (int i = 0; i < 3; i++)
-          N[i] = 0;
+          N.buffer[i] = 0;
         for (int i = 0; i < 16; i++)
-          H[i] = 0;
-        H[0] = 1;
-        H[5] = 1;
-        H[10] = 1;
-        H[15] = 1;
+          H.buffer[i] = 0;
+        H.buffer[0] = 1;
+        H.buffer[5] = 1;
+        H.buffer[10] = 1;
+        H.buffer[15] = 1;
       }
 };
 

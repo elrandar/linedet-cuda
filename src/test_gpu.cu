@@ -1,4 +1,6 @@
 #include "test_gpu.hpp"
+#include "matrix_tools_gpu.cuh"
+
 // #include "segment_gpu.cuh"
 #include <cassert>
 #include <vector>
@@ -89,19 +91,46 @@ void test_gpu(uint8_t* hostBuffer, int width, int height)
 }
 
 
-__device__ void predict(Filter* f, int* integrations)
+__device__ void predict(Filter* f)
   {
-    f.S_predicted = A * f.S + f.W;
-    f.X_predicted = C * f.S_predicted + f.N;
+    using namespace kalman_gpu;
 
-    uint32_t thik_d2 = f.X_predicted(1, 0) / 2;
-    f.n_min = f.X_predicted(0, 0) - thik_d2;
-    f.n_max = f.X_predicted(0, 0) + thik_d2;
+    float a[16] = {1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    kMatrix<float, 4, 4> A = kMatrix<float, 4, 4>(a);
+    float a_t[16] = {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    kMatrix<float, 4, 4> A_transpose(a_t);
+    float c[12] = {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    kMatrix<float, 3, 4> C(c);
+    float c_t[12] = {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1};
+    kMatrix<float, 4, 3> C_transpose(c_t);
+    float vn[9] = {2, 0, 0, 0,
+                   1, 0, 0, 0, 12};
+    kMatrix<float, 3, 3> Vn(vn);
 
-    f.H = A * f.H * A_transpose;
+    
+    f->S_predicted = kMatrix<float, 4, 1>();
+    matmul(A, f->S, f->S_predicted);
+    add(f->S_predicted, f->W, f->S_predicted);
 
-    f->W[0] = 0;
-    f->W[1] = 0;
+    f->X_predicted = kMatrix<float, 3, 1>();
+    matmul(C, f->S_predicted, f->X_predicted);
+    add(f->X_predicted, f->N, f->X_predicted);
+
+
+    // f.S_predicted = A * f.S + f.W;
+    // f.X_predicted = C * f.S_predicted + f.N;
+
+    // uint32_t thik_d2 = f.X_predicted(1, 0) / 2;
+    // f.n_min = f.X_predicted(0, 0) - thik_d2;
+    // f.n_max = f.X_predicted(0, 0) + thik_d2;
+
+    matmul(f->H, A_transpose, f->H);
+    matmul(A, f->H, f->H);
+
+    // f.H = A * f.H * A_transpose;
+
+    f->W.buffer[0] = 0;
+    f->W.buffer[1] = 0;
 
     f->obs_index = -1;
   }
@@ -118,9 +147,12 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
         return;
 
 
-    Filter* f = filter_buffer[x];
-    int* integrations = integration_buffer[x * integration_padding];
-    predict(f, integrations);
+    Filter* f = filter_buffer + x;
+    int* integrations = integrations_buffer + (x * integration_padding);
+    (void) integrations;
+    (void) nb_obs_in_col;
+    predict(f);
+
     // for (int i = 0; i < nb_obs_in_col; i++)
     // {
     // printf("col n%d, obs n%d, it has position of %f, thickness of %f and lum of %f\n",

@@ -2,6 +2,12 @@
 
 ## Compiler le code
 
+Il se peut que la version 10 de g++ soit requise.
+```
+export CXX=/usr/local/bin/g++-10
+```
+avant d'appeler cmake.
+
 Sur une machine debian :
 ```
 sudo apt install libeigen3-dev

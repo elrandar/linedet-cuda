@@ -83,39 +83,47 @@ int main(int argc, char *argv[])
         std::cout << "USING GPU\n";
         std::pair<obs_elem *, unsigned int*> res;
 
-        for (auto i = 0u; i < 100; ++i)
-            res = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 245);
+        res = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 245);
 
         std::cout << "Sizes:\n";
         for (auto i =0u; i < img.width; ++i)
             std::cout << res.second[i] << " ";
         std::cout << "\n";
+
+        delete[] res.first;
+        delete[] res.second;
     }
-    // else if (mode == "--gpu2")
-    // {
-    //     std::cout << "USING GPU\n";
-    //     auto stride = img.width * sizeof(uint8_t);
-    //     auto res = kalman::obs_parser::parse_gpu2(img.width, img.height, img.get_buffer(), stride, 245);
+    else if (mode == "--gpu2")
+    {
+        std::cout << "USING GPU\n";
+        auto stride = img.width * sizeof(uint8_t);
+        std::pair<obs_elem *, unsigned int*> res;
 
-    //     std::cout << "Sizes:\n";
-    //     for (auto i =0u; i < img.width; ++i)
-    //         std::cout << res.second[i] << " ";
-    //     std::cout << "\n";
-    // }
-    // else if (mode == "--gpu3")
-    // {
-    //     std::cout << "USING GPU\n";
-    //     auto stride = img.width * sizeof(uint8_t);
-    //     std::pair<kMatrix<float> *, unsigned int*> res;
+        res = kalman::obs_parser::parse_gpu2(img.width, img.height, img.get_buffer(), 245);
 
-    //     for (auto i = 0u; i < 100; ++i)
-    //         res = kalman::obs_parser::parse_gpu3(img.width, img.height, img.get_buffer(), 245);
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res.second[i] << " ";
+        std::cout << "\n";
 
-    //     std::cout << "Sizes:\n";
-    //     for (auto i =0u; i < img.width; ++i)
-    //         std::cout << res.second[i] << " ";
-    //     std::cout << "\n";
-    // }
+        delete[] res.first;
+        delete[] res.second;
+    }
+    else if (mode == "--gpu3")
+    {
+        std::cout << "USING GPU\n";
+        std::pair<obs_elem *, unsigned int*> res;
+
+        res = kalman::obs_parser::parse_gpu3(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res.second[i] << " ";
+        std::cout << "\n";
+
+        delete[] res.first;
+        delete[] res.second;
+    }
     else
         throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
 

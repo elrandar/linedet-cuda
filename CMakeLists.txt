@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(kalman-gpu VERSION 0.1.0 LANGUAGES CXX CUDA)
  
-set(CUDA_NVCC_FLAGS "-use_fast_math -O3")
+# set(CUDA_NVCC_FLAGS "-use_fast_math -O3 -lineinfo")
+# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G" )
 
 include(CTest)
 enable_testing()
@@ -29,6 +30,13 @@ add_executable(kalman-gpu
                 include/segment.hpp
                 src/main.cpp)
 
+target_compile_options(kalman-gpu PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+        --use_fast_math
+        --relocatable-device-code=true
+        -G
+        -rdynamic
+        # -Xcompiler
+        >)
 set_property(TARGET kalman-gpu PROPERTY CUDA_ARCHITECTURES 61)
 set_property(TARGET kalman-gpu PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 

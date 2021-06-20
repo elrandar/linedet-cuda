@@ -321,7 +321,8 @@ __device__ bool filter_has_to_continue(Filter* f)
 }
 
 __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int max_height,
-                               Filter* filter_buffer, int* integrations_buffer, int integration_padding)
+                               Filter* filter_buffer, int* integrations_buffer, int integration_padding,
+                               int* obs_used_buffer)
 {
     int x = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -332,9 +333,10 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
 
 
     Filter* f = filter_buffer + x;
+    if (f->dead)
+        return;
+
     int* integrations = integrations_buffer + (x * integration_padding);
-    (void) integrations;
-    (void) nb_obs_in_col;
 
     predict(f);
 
@@ -355,8 +357,8 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     
     if (f->obs_index != -1)
     {
-        printf("accepted\n");
         // set obs matched in obs match array
+        obs_used_buffer[f->obs_index] = 1;
         integrate(f, col, obs_buffer + obs_count[col - 1] + f->obs_index * 3,
                           integrations);
         compute_sigmas(f);
@@ -380,6 +382,17 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     // }
 }
 
+int get_max(int* buffer, int size)
+{
+    int max = buffer[0];
+    for (int i = 1; i < size; i++)
+    {
+        if (buffer[i] - buffer[i - 1] > max)
+            max = buffer[i];
+    }
+    return max;
+}
+
 void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_height, int nb_obs)
 {
     cudaError_t rc = cudaSuccess;
@@ -387,10 +400,14 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     // alloc device memory
     float* obs_buffer;
     int* obs_count_buffer;
+    int* obs_used_buffer;
 
-    int integration_padding = nb_obs * width;
+    int max_observations_col = get_max(obsCount, width);
+
+    int integration_padding = width;
     std::vector<Filter> filter_host_buffer = std::vector<Filter>(nb_obs);
     std::vector<int> integrations_host_buffer = std::vector<int>(nb_obs * width, -1);
+    std::vector<int> obs_used_host_buffer = std::vector<int>(max_observations_col, 0);
     int* integrations_device_buffer;
     Filter* filter_device_buffer;
     int nb_active_filters;
@@ -399,6 +416,9 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     if (rc)
         abortError("Fail buffer alloc");
     rc = cudaMalloc(&obs_count_buffer, width * sizeof(int));
+    if (rc)
+        abortError("Fail buffer alloc");
+    rc = cudaMalloc(&obs_used_buffer, max_observations_col * sizeof(int));
     if (rc)
         abortError("Fail buffer alloc");
     rc = cudaMalloc(&filter_device_buffer, nb_obs * sizeof(Filter));
@@ -435,6 +455,10 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
         cudaMemcpyHostToDevice);
     if (rc)
         abortError("Cpy host to device fail");
+    rc = cudaMemcpy(obs_used_buffer, obs_used_host_buffer.data(), max_observations_col * sizeof(int),
+                cudaMemcpyHostToDevice);
+    if (rc)
+        abortError("Cpy host to device fail");
 
     // cudaDeviceProp prop;
     // cudaGetDeviceProperties( &prop, 0);
@@ -444,26 +468,70 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     //                                      << prop.maxThreadsDim[1] << ", "
     //                                      << prop.maxThreadsDim[2] << std::endl;
  
-    int bsize = 512;
-    int h = std::ceil((float)max_height / (bsize));
 
-    std::cout << "running kernel of size " << h << std::endl;
 
-    // for (int i = 1; i < width; i++)
-    // {
-    int i = 1;
-    update_filters<<<h, bsize>>>(obs_buffer, obs_count_buffer, i,
-                                        nb_active_filters, filter_device_buffer,
-                                        integrations_device_buffer, integration_padding);
-    // }
-   
-    if (cudaPeekAtLastError())
-        abortError("Computation Error");
+    for (int i = 1; i < width; i++)
+    {
+        // int i = 1;
+        int bsize = 512;
+        int h = std::ceil((float)nb_active_filters / (bsize));
+
+        std::cout << "running kernel of size " << h << std::endl;
+
+        update_filters<<<h, bsize>>>(obs_buffer, obs_count_buffer, i,
+                                            nb_active_filters, filter_device_buffer,
+                                            integrations_device_buffer, integration_padding,
+                                            obs_used_buffer);
+
+        
+        // copy back obs_used_buffer, integrations_device_buffer, filter_device_buffer
+
+        if (cudaPeekAtLastError())
+            abortError("Computation Error");
+
+
+        rc = cudaMemcpy(filter_host_buffer.data(), filter_device_buffer, nb_obs * sizeof(Filter),
+            cudaMemcpyDeviceToHost);
+        if (rc)
+            abortError("Cpy host to device fail");
+        rc = cudaMemcpy(obs_used_host_buffer.data(), obs_used_buffer, max_observations_col * sizeof(int),
+            cudaMemcpyDeviceToHost);
+        if (rc)
+            abortError("Cpy host to device fail");
+
+        // create filters from unused observations
+        int nb_obs_in_col = obsCount[i + 1] - obsCount[i];
+
+        for (int j = 0; j < nb_obs_in_col; j++)
+        {
+            float* obs_ptr = obsHostBuffer + obsCount[i - 1] + j * 3;
+            if (obs_used_host_buffer[j] == 0)
+            {
+                filter_host_buffer[nb_active_filters] = Filter(obs_ptr[0],
+                                obs_ptr[1],
+                                obs_ptr[2],
+                                i);
+                nb_active_filters++;
+            }
+            else
+                obs_used_host_buffer[j] = 0;
+        }
+
+        rc = cudaMemcpy(obs_used_buffer, obs_used_host_buffer.data(), max_observations_col * sizeof(int),
+                cudaMemcpyHostToDevice);
+        rc = cudaMemcpy(filter_device_buffer, filter_host_buffer.data(), nb_obs * sizeof(Filter),
+                cudaMemcpyHostToDevice);
+        if (rc)
+            abortError("Cpy host to device fail");
+        if (rc)
+            abortError("Cpy host to device fail");
+    }
     
 
-    // rc = cudaMemcpy2D(hostBuffer, width * sizeof(uint8_t), devOutputBuffer, out_pitch, width * sizeof(char), height, cudaMemcpyDeviceToHost);
-    //   if (rc)
-    // abortError("Unable to copy buffer back to memory");
+    rc = cudaMemcpy(integrations_host_buffer.data(), integrations_device_buffer, nb_obs * width * sizeof(int),
+        cudaMemcpyDeviceToHost);
+    if (rc)
+        abortError("Cpy host to device fail");
 
     // Free
     rc = cudaFree(obs_buffer);
@@ -472,4 +540,10 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     rc = cudaFree(obs_count_buffer);
     if (rc)
         abortError("Unable to free memory");
+    rc = cudaFree(filter_device_buffer);
+    if (rc)
+        abortError("Cuda Free fail");
+    rc = cudaFree(integrations_device_buffer);
+    if (rc)
+        abortError("Cuda Free fail");
 }

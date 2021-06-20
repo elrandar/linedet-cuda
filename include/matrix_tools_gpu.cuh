@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cuda_header.hpp"
+#include <cstdio>
 #include <stdlib.h>
 
 
@@ -47,7 +48,20 @@ CUDA_CALLABLE_MEMBER float* matmul(float* lhs, float* rhs, float* out, size_t n,
 CUDA_CALLABLE_MEMBER float* matmul(const float* lhs, const float* rhs, float* out, const size_t n, const size_t p,
                            const size_t m);
 
-                           
+
+template <typename T, int H, int W>
+CUDA_CALLABLE_MEMBER void print(const kMatrix<T, H, W> &mat)
+{
+    for (int i = 0 ; i < H; i++)
+    {
+        for (int j = 0 ; j< W; j++)
+        {
+            printf("%f,", mat(i, j));
+        }
+        printf("\n");
+    }
+}            
+
 template <typename T, int H, int W>
 CUDA_CALLABLE_MEMBER kMatrix<T, H, W> operator*(const kMatrix<T, H, W> &lhs, const kMatrix<T, H, W> &rhs)
 {

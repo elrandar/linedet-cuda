@@ -120,9 +120,9 @@ __device__ void predict(Filter* f)
     // f.S_predicted = A * f.S + f.W;
     // f.X_predicted = C * f.S_predicted + f.N;
 
-    // uint32_t thik_d2 = f.X_predicted(1, 0) / 2;
-    // f.n_min = f.X_predicted(0, 0) - thik_d2;
-    // f.n_max = f.X_predicted(0, 0) + thik_d2;
+    float thik_d2 = f->X_predicted(1, 0) / 2;
+    f->n_min = f->X_predicted(0, 0) - thik_d2;
+    f->n_max = f->X_predicted(0, 0) + thik_d2;
 
     matmul(f->H, A_transpose, f->H);
     matmul(A, f->H, f->H);
@@ -135,6 +135,89 @@ __device__ void predict(Filter* f)
     f->obs_index = -1;
   }
 
+__device__  bool accepts_sigma(float prediction, float observation, float sigma)
+  {
+    // printf("prediction : %f, observation : %f\n", prediction, observation);
+    if (prediction > observation)
+      return (prediction - observation) <= 3 * sigma;
+    return (observation - prediction) <= 3 * sigma;
+  }
+
+__device__  bool accepts(Filter* f, float* obs, float min, float max)
+  {
+    if (f->nb_integration > 10 && obs[1] / f->X_predicted(1, 0) > 1.5 &&
+        std::abs(obs[1] - f->X_predicted(1, 0)) > 3)
+    {
+      return false;
+    }
+
+    if (f->n_max < min || max < f->n_min)
+      return false;
+    
+    // printf("prediction vector : %f, %f, %f | obs_vector : %f, %f, %f\n", f->X_predicted(0,0), f->X_predicted(1,0), f->X_predicted(2,0),
+    //         obs[0], obs[1], obs[2]);
+    return accepts_sigma(f->X_predicted(0, 0), obs[0], f->sigma_position) &&
+           accepts_sigma(f->X_predicted(1, 0), obs[1], f->sigma_thickness) &&
+           accepts_sigma(f->X_predicted(2, 0), obs[2], f->sigma_luminosity);
+  }
+
+__device__ bool find_match(Filter* f, float* obs_ptr)
+{
+    float obs_thick = obs_ptr[1];
+    float obs_thick_d2 = obs_thick / 2;
+
+    float obs_n_min = obs_ptr[0] - obs_thick_d2;
+    if (obs_n_min != 0)
+        obs_n_min--;
+    float obs_n_max = obs_ptr[0] + obs_thick_d2 + 1;
+
+
+    // TODO under other part here when everything works 
+
+    return accepts(f, obs_ptr, obs_n_min, obs_n_max);
+}
+
+
+__device__ void choose_nearest(Filter* f, float* obs_ptr, int obs_id)
+{
+    float distance = std::abs(obs_ptr[0] - f->X_predicted(0, 0));
+
+    if (f->obs_index == -1 || distance < f->obs_distance)
+    {
+        f->obs_index = obs_id;
+        f->obs_distance = distance;
+    }
+}
+
+//  __device__ void integrate(Filter* f, int t, float* obs_ptr)
+//   {
+//     auto& observation = f.observation.value().obs;
+
+//     if (!f.currently_under_other.empty())
+//     {
+//       for (auto& elm : f.currently_under_other)
+//         f.under_other.push_back(elm);
+//       f.currently_under_other.clear();
+//     }
+
+
+//     auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
+//     f.S    = f.S_predicted + G * (observation - f.X_predicted);
+//     auto id4 = kMatrix<double>({1, 0, 0, 0,
+//                                 0, 1, 0, 0,
+//                                 0, 0, 1, 0,
+//                                 0, 0, 0, 1}, 4, 4);
+//     f.H    = (id4 - G * C) * f.H;
+
+//     insert_into_filters_list(f, observation, t, params);
+
+//     auto   length = f.slopes.size();
+//     double second_derivative =
+//         (f.slopes[length - 1] - f.slopes[length - 2]) / (f.t_values[length - 1] - f.t_values[length - 2]);
+//     f.W(0, 0)          = 0.5 * second_derivative;
+//     f.W(1, 0)          = second_derivative;
+//     f.last_integration = t;
+//   }
 
 __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int max_height,
                                Filter* filter_buffer, int* integrations_buffer, int integration_padding)
@@ -151,7 +234,32 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     int* integrations = integrations_buffer + (x * integration_padding);
     (void) integrations;
     (void) nb_obs_in_col;
+
     predict(f);
+
+    // kalman_gpu::print(f->S);
+    // kalman_gpu::print(f->X);
+
+    for (int i = 0; i < nb_obs_in_col; i++)
+    {
+        float* obs_ptr = obs_buffer + obs_count[col - 1] + i * 3;
+        bool accepted = find_match(f, obs_ptr);
+
+        if (accepted)
+        {
+            choose_nearest(f, obs_ptr, i);
+        }
+    }
+
+    
+    if (f->obs_index != -1)
+    {
+        printf("accepted\n");
+        // set obs matched in obs match array
+        // integrate(f, col, obs_buffer + obs_count[col] + f->obs_index * 3);
+    }
+
+
 
     // for (int i = 0; i < nb_obs_in_col; i++)
     // {
@@ -192,13 +300,14 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
         abortError("Cuda Malloc fail");
     
 
-    for (int i = 0; i < obsCount[0]; i++)
+    for (int i = 0; i < obsCount[1]; i++)
     {
-        filter_host_buffer[i] = Filter(obs_buffer[i * 3],
-                                       obs_buffer[i * 3 + 1],
-                                       obs_buffer[i * 3 + 2]);
+        filter_host_buffer[i] = Filter(obsHostBuffer[i * 3],
+                                       obsHostBuffer[i * 3 + 1],
+                                       obsHostBuffer[i * 3 + 2]);
+        integrations_host_buffer[i * width] = i;
     }
-    nb_active_filters = obsCount[0];
+    nb_active_filters = obsCount[1];
 
     rc = cudaMemcpy(obs_buffer, obsHostBuffer, nb_obs * sizeof(float) * 3,
                 cudaMemcpyHostToDevice);

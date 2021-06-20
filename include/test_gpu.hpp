@@ -11,10 +11,6 @@ struct Filter
     kalman_gpu::kMatrix<float, 4, 1> W;
     kalman_gpu::kMatrix<float, 3, 1> N;
     kalman_gpu::kMatrix<float, 4, 4> H;
-    // float S[4]; // 4 x 1
-    // float W[4]; // 4 x 1
-    // float N[3]; // 3 x 1
-    // float H[16]; // 4 x 4
     kalman_gpu::kMatrix<float, 4, 1> S_predicted;
     kalman_gpu::kMatrix<float, 3, 1> X_predicted;
 
@@ -26,6 +22,10 @@ struct Filter
     float sigma_position;
     float sigma_thickness;
     float sigma_luminosity;
+
+    float n_min;
+    float n_max;
+
     Filter() = default;
     CUDA_CALLABLE_MEMBER Filter(float position, float thickness, float luminosity)
     : 
@@ -34,7 +34,9 @@ struct Filter
       nb_integration(1),
       sigma_position(2),
       sigma_thickness(2),
-      sigma_luminosity(57)
+      sigma_luminosity(57),
+      n_min(0),
+      n_max(0)
       {
         S(0, 0) = position;
         S(1, 0) = 0;

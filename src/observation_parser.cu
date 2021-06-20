@@ -97,8 +97,7 @@ namespace kalman {
                 cparams->in_obs = true;
             }
         }
-        else
-        {
+        else {
             if (cparams->max != -1) {
                 auto res_index = sizes[i] * width + i;
                 vec[res_index].position = static_cast<float>((cparams->start + line_number) / 2);
@@ -161,7 +160,7 @@ namespace kalman {
             for (auto line_number = 0u; line_number < height; ++line_number)
                 line_parser<<<dimGrid, dimBlock>>>(width, img + (line_number * width), vec, threshold, cache, line_number, sizes);
 
-            last_line_parser<<<dimGrid, dimBlock>>>(width, height, vec, cache, sizes);
+	    last_line_parser<<<dimGrid, dimBlock>>>(width, height, vec, cache, sizes);
 
             // - - - - - - - - - - - END ALGO - - - - - - - - - -
 

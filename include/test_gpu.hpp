@@ -6,6 +6,7 @@
 
 struct Filter
 {
+    bool dead;
     bool isHorizontal;
     kalman_gpu::kMatrix<float, 4, 1> S;
     kalman_gpu::kMatrix<float, 4, 1> W;
@@ -17,24 +18,41 @@ struct Filter
     int obs_index;
     int obs_distance;
 
+    int first_integration_col;
     int nb_integration;
 
     float sigma_position;
     float sigma_thickness;
     float sigma_luminosity;
 
+    float sum_position;
+    float sum_thickness;
+    float sum_luminosity;
+
+    float sum_sq_position;
+    float sum_sq_thickness;
+    float sum_sq_luminosity;
+
     float n_min;
     float n_max;
 
     Filter() = default;
-    CUDA_CALLABLE_MEMBER Filter(float position, float thickness, float luminosity)
+    CUDA_CALLABLE_MEMBER Filter(float position, float thickness, float luminosity, int first_integ_col)
     : 
+      dead(false),
       obs_index(-1),
       obs_distance(0),
+      first_integration_col(first_integ_col),
       nb_integration(1),
       sigma_position(2),
       sigma_thickness(2),
       sigma_luminosity(57),
+      sum_position(0),
+      sum_thickness(0),
+      sum_luminosity(0),
+      sum_sq_position(0),
+      sum_sq_thickness(0),
+      sum_sq_luminosity(0),
       n_min(0),
       n_max(0)
       {

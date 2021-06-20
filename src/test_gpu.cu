@@ -189,35 +189,136 @@ __device__ void choose_nearest(Filter* f, float* obs_ptr, int obs_id)
     }
 }
 
-//  __device__ void integrate(Filter* f, int t, float* obs_ptr)
-//   {
-//     auto& observation = f.observation.value().obs;
+__device__ void insert_into_filters_list(Filter* f, int* integrations, int col, float* obs_ptr)
+{
+    integrations[col] = f->obs_index;
+    f->nb_integration += 1;
 
-//     if (!f.currently_under_other.empty())
-//     {
-//       for (auto& elm : f.currently_under_other)
-//         f.under_other.push_back(elm);
-//       f.currently_under_other.clear();
-//     }
+    float position = obs_ptr[0];
+    float thickness = obs_ptr[1];
+    float luminosity = obs_ptr[2];
+
+    f->sum_position += position;
+    f->sum_sq_position += position * position;
+    f->sum_thickness += thickness;
+    f->sum_sq_thickness += thickness * thickness;
+    f->sum_luminosity += luminosity;
+    f->sum_sq_luminosity += luminosity * luminosity;
+    // f.slopes.push_back(compute_slope(f));
+
+    // if (f.n_values.size() > params.nb_values_to_keep)
+    // {
+    //   auto thick = f.thicknesses[0];
+    //   auto nn    = f.n_values[0];
+    //   auto tt    = f.t_values[0];
+
+    //   f.thicknesses.erase(f.thicknesses.begin());
+    //   f.t_values.erase(f.t_values.begin());
+    //   f.n_values.erase(f.n_values.begin());
+    //   f.luminosities.erase(f.luminosities.begin());
+    //   f.slopes.erase(f.slopes.begin());
+
+    //   if (f.first_slope == std::nullopt)
+    //     f.first_slope = std::make_optional(f.slopes[f.slopes.size() - 1]);
+
+    //   f.segment_points.emplace_back(nn, tt, thick, f.is_horizontal);
+    // }
+  }
+
+ __device__ void integrate(Filter* f, int t, float* obs_ptr, int* integrations)
+  {
+    using namespace kalman_gpu;
+
+    float c[12] = {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    kMatrix<float, 3, 4> C(c);
+    float c_t[12] = {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1};
+    kMatrix<float, 4, 3> C_transpose(c_t);
+    float vn[9] = {2, 0, 0, 0,
+                   1, 0, 0, 0, 12};
+    kMatrix<float, 3, 3> Vn(vn);
+
+    kMatrix<float, 3, 1> observation{};
+    observation.buffer[0] = obs_ptr[0];
+    observation.buffer[1] = obs_ptr[1];
+    observation.buffer[2] = obs_ptr[2];
+
+    // if (!f.currently_under_other.empty())
+    // {
+    //   for (auto& elm : f.currently_under_other)
+    //     f.under_other.push_back(elm);
+    //   f.currently_under_other.clear();
+    // }
+
+    kMatrix<float, 4, 3> G{};
+    {
+        kMatrix<float, 4, 3> tmp_res{};
+        matmul(f->H, C_transpose, tmp_res);
+        kMatrix<float, 3, 3> tmp_res_2{};
+        matmul(C, tmp_res, tmp_res_2);
+        add(tmp_res_2, Vn, tmp_res_2);
+        invert_matrix3(tmp_res_2, tmp_res_2);
+
+        matmul(C_transpose, tmp_res_2, tmp_res);
+
+        matmul(f->H, tmp_res, G);
+    } // auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
+
+    {
+        kMatrix<float, 3, 1> obs_diff{};
+        subtract(observation, f->X_predicted, obs_diff);
+        matmul(G, obs_diff, f->S);
+        add(f->S_predicted, f->S, f->S);
+    } // f.S    = f.S_predicted + G * (observation - f.X_predicted);
 
 
-//     auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
-//     f.S    = f.S_predicted + G * (observation - f.X_predicted);
-//     auto id4 = kMatrix<double>({1, 0, 0, 0,
-//                                 0, 1, 0, 0,
-//                                 0, 0, 1, 0,
-//                                 0, 0, 0, 1}, 4, 4);
-//     f.H    = (id4 - G * C) * f.H;
+    {
+        float id4_buf[16] = {1, 0, 0, 0,
+                            0, 1, 0, 0,
+                            0, 0, 1, 0,
+                            0, 0, 0, 1};
+        auto id4 = kMatrix<float, 4, 4>(id4_buf);
+        kMatrix<float, 4, 4> tmp_res{};
+        matmul(G, C, tmp_res);
+        subtract(id4, tmp_res, tmp_res);
+        kMatrix<float, 4, 4> tmp_res_2{};
+        matmul(tmp_res, f->H, tmp_res_2);
 
-//     insert_into_filters_list(f, observation, t, params);
+        for (int i = 0; i < 16; i++)
+            f->H.buffer[i] = tmp_res_2.buffer[i];
+    } // f.H    = (id4 - G * C) * f.H;
 
-//     auto   length = f.slopes.size();
-//     double second_derivative =
-//         (f.slopes[length - 1] - f.slopes[length - 2]) / (f.t_values[length - 1] - f.t_values[length - 2]);
-//     f.W(0, 0)          = 0.5 * second_derivative;
-//     f.W(1, 0)          = second_derivative;
-//     f.last_integration = t;
-//   }
+    insert_into_filters_list(f, integrations, t, obs_ptr);
+
+    // auto   length = f.slopes.size();
+    // double second_derivative =
+    //     (f.slopes[length - 1] - f.slopes[length - 2]) / (f.t_values[length - 1] - f.t_values[length - 2]);
+    // f.W(0, 0)          = 0.5 * second_derivative;
+    // f.W(1, 0)          = second_derivative;
+    // f.last_integration = t;
+  }
+
+__device__ float std_calc(float sum_sq, float sum, float n)
+{
+    float mean_xx = sum_sq / n;
+    float mean = sum / n;
+    return sqrt(mean_xx - mean * mean); 
+}
+
+__device__ void compute_sigmas(Filter* f)
+{
+    int n = f->nb_integration;
+    if (n > 10)
+    {
+      f->sigma_position   = std_calc(f->sum_sq_position, f->sum_position, n) + 1;
+      f->sigma_thickness  = std_calc(f->sum_sq_thickness, f->sum_thickness, n) * 2 + 0.64;
+      f->sigma_luminosity = std_calc(f->sum_sq_luminosity, f->sum_luminosity, n) + 13;
+    }
+}
+
+__device__ bool filter_has_to_continue(Filter* f)
+{
+    return false;
+}
 
 __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int max_height,
                                Filter* filter_buffer, int* integrations_buffer, int integration_padding)
@@ -256,11 +357,19 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     {
         printf("accepted\n");
         // set obs matched in obs match array
-        // integrate(f, col, obs_buffer + obs_count[col] + f->obs_index * 3);
+        integrate(f, col, obs_buffer + obs_count[col - 1] + f->obs_index * 3,
+                          integrations);
+        compute_sigmas(f);
     }
-
-
-
+    else if (filter_has_to_continue(f))
+    {
+        for (int i = 0; i < 4; i++)
+            f->S(i, 0) = f->S_predicted(i, 0);
+    }
+    else
+    {
+        f->dead = true;
+    }
     // for (int i = 0; i < nb_obs_in_col; i++)
     // {
     // printf("col n%d, obs n%d, it has position of %f, thickness of %f and lum of %f\n",
@@ -304,7 +413,8 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     {
         filter_host_buffer[i] = Filter(obsHostBuffer[i * 3],
                                        obsHostBuffer[i * 3 + 1],
-                                       obsHostBuffer[i * 3 + 2]);
+                                       obsHostBuffer[i * 3 + 2],
+                                       0);
         integrations_host_buffer[i * width] = i;
     }
     nb_active_filters = obsCount[1];

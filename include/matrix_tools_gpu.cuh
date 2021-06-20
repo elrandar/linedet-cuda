@@ -38,9 +38,9 @@ public:
 };
 
 
-CUDA_CALLABLE_MEMBER float* invert_matrix(float* mat, size_t len);
+CUDA_CALLABLE_MEMBER float* invert_matrix(const float* mat, float* out, size_t len);
 
-CUDA_CALLABLE_MEMBER float compute_det(float* mat, size_t len);
+CUDA_CALLABLE_MEMBER float compute_det(const float* mat, size_t len);
 
 CUDA_CALLABLE_MEMBER float* matmul(float* lhs, float* rhs, float* out, size_t n, size_t p,
                            size_t m);
@@ -93,10 +93,10 @@ CUDA_CALLABLE_MEMBER kMatrix<T, H, W> subtract(const kMatrix<T, H, W> &lhs, cons
 }
 
 template <typename T, int H, int W>
-CUDA_CALLABLE_MEMBER kMatrix<T, H, W> invert_matrix3(const kMatrix<T, H, W> &mat)
+CUDA_CALLABLE_MEMBER kMatrix<T, H, W> invert_matrix3(const kMatrix<T, H, W> &mat, kMatrix<T, H, W> &out)
 {
-    auto inv_buf = invert_matrix(mat.buffer, 3);
-    return kMatrix(inv_buf, 3, 3);
+    invert_matrix(mat.buffer, out.buffer, 3);
+    return out;
 }
 
 template <typename T, int H, int W, int S>
@@ -112,6 +112,6 @@ CUDA_CALLABLE_MEMBER kMatrix<T, H, S> matmul(const kMatrix<T, H, W> &lhs, const 
 }
 
 
-CUDA_CALLABLE_MEMBER float* get_adjugate_matrix(float* mat, float* out, size_t len);
+CUDA_CALLABLE_MEMBER float* get_adjugate_matrix(const float* mat, float* out, size_t len);
 
 }

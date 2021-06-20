@@ -43,7 +43,7 @@ __device__ float* matmul(const float* lhs, const float* rhs, float* out, const s
 }
 
 
-__device__ float* invert_matrix(float* mat, float* out, size_t len)
+__device__ float* invert_matrix(const float* mat, float* out, size_t len)
 {
     auto det = compute_det(mat, len);
     get_adjugate_matrix(mat, out, len);
@@ -57,7 +57,7 @@ __device__ float* invert_matrix(float* mat, float* out, size_t len)
 }
 
 
-__device__ float compute_det(float* mat, size_t len)
+__device__ float compute_det(const float* mat, size_t len)
 {
     if (len == 4)
     {
@@ -102,7 +102,7 @@ __device__ float compute_det(float* mat, size_t len)
 }
 
 
-__device__ float* get_adjugate_matrix(float* mat, float* out, size_t len)
+__device__ float* get_adjugate_matrix(const float* mat, float* out, size_t len)
 {
     if (len == 4)
     {

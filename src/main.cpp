@@ -87,15 +87,17 @@ int main(int argc, char *argv[])
         std::cout << "Processing Image in parallel, using GPU\n";
         
 
-        traversal_gpu(observations_array.data(),
+        auto out = traversal_gpu(observations_array.data(),
                       obs_per_col_array.data(),
                       img.width,
                       img.height / 2,
                       observations_array.size() / 3);
-        // auto out_img = kalman::image2d<uint8_t>(img.width, img.height);
-        // out_img.set_buffer(std::vector<uint8_t>(host_buff, 
-        //     host_buff + img.width * img.height));
-        // img.imsave("out.pgm");
+        // Image labellisation
+        auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
+        labeled_arr(lab_arr, out);
+    
+        // Output
+        lab_arr.imsave("out.pgm");
     }
     else
         throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");

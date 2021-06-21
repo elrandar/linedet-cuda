@@ -271,22 +271,22 @@ __device__ void insert_into_filters_list(Filter* f, int* integrations, int col, 
         matmul(f->H, tmp_res, G);
     } // auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
 
-    printf("integration : G value is\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n", 
-    G(0,0), G(1,0), G(2,0),G(3,0),G(0,1), G(1,1), G(2,1),G(3,1),G(0,2), G(1,2), G(2,2),G(3,2));
+    // printf("integration : G value is\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n", 
+    // G(0,0), G(1,0), G(2,0),G(3,0),G(0,1), G(1,1), G(2,1),G(3,1),G(0,2), G(1,2), G(2,2),G(3,2));
 
     {
         kMatrix<float, 3, 1> obs_diff{};
         subtract(observation, f->X_predicted, obs_diff);
-        printf("integration :\nobservation is %f, %f, %f, X_predicted is %f, %f, %f, so obs_diff is %f, %f, %f\n",
-        observation(0,0), observation(1,0), observation(2,0),
-        f->X_predicted(0,0),  f->X_predicted(1,0),  f->X_predicted(2,0), 
-        obs_diff(0,0), obs_diff(1,0), obs_diff(2,0));
+        // printf("integration :\nobservation is %f, %f, %f, X_predicted is %f, %f, %f, so obs_diff is %f, %f, %f\n",
+        // observation(0,0), observation(1,0), observation(2,0),
+        // f->X_predicted(0,0),  f->X_predicted(1,0),  f->X_predicted(2,0), 
+        // obs_diff(0,0), obs_diff(1,0), obs_diff(2,0));
         
         matmul(G, obs_diff, f->S);
         add(f->S_predicted, f->S, f->S);
     } // f.S    = f.S_predicted + G * (observation - f.X_predicted);
 
-    printf("integration : new S value is %f, %f, %f, %f\n", f->S(0,0), f->S(1,0), f->S(2,0),f->S(3,0));
+    // printf("integration : new S value is %f, %f, %f, %f\n", f->S(0,0), f->S(1,0), f->S(2,0),f->S(3,0));
 
     {
         float id4_buf[16] = {1, 0, 0, 0,
@@ -345,8 +345,8 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
 
     int nb_obs_in_col = obs_count[col + 1] - obs_count[col];
 
-    if (x == 0)
-        printf("nb_obs_in_col : %d\n", nb_obs_in_col);
+    // if (x == 0)
+    //     printf("nb_obs_in_col : %d\n", nb_obs_in_col);
     if (x >= max_height)
         return;
 
@@ -361,20 +361,20 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
 
     for (int i = 0; i < nb_obs_in_col; i++)
     {
-        if (x == 0)
-        {
-            printf("obs offset is %d * 3 + %d * 3\n", obs_count[col - 1], i);
-        }
-        float* obs_ptr = obs_buffer + obs_count[col - 1] * 3 + i * 3;
+        // if (x == 0)
+        // {
+        //     printf("obs offset is %d * 3 + %d * 3\n", obs_count[col - 1], i);
+        // }
+        float* obs_ptr = obs_buffer + obs_count[col] * 3 + i * 3;
 
         bool accepted = find_match(f, obs_ptr);
 
-        if (x == 0)
-        {
-            printf("Trying to match filter with prediction %f, %f, %f with observation %f, %f, %f. Accepted = %d\n",
-            f->S_predicted(0,0), f->S_predicted(1,0),f->S_predicted(2,0),
-            obs_ptr[0], obs_ptr[1], obs_ptr[2], accepted);
-        }
+        // if (x == 0)
+        // {
+        //     printf("Trying to match filter with prediction %f, %f, %f with observation %f, %f, %f. Accepted = %d\n",
+        //     f->S_predicted(0,0), f->S_predicted(1,0),f->S_predicted(2,0),
+        //     obs_ptr[0], obs_ptr[1], obs_ptr[2], accepted);
+        // }
         if (accepted)
         {
             choose_nearest(f, obs_ptr, i);
@@ -384,22 +384,22 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     
     if (f->obs_index != -1)
     {
-        printf("filter n%d matched with obs n%d\n", x, f->obs_index);
+        // printf("filter n%d matched with obs n%d\n", x, f->obs_index);
         // set obs matched in obs match array
         obs_used_buffer[f->obs_index] = 1;
-        integrate(f, col, obs_buffer + obs_count[col - 1] * 3 + f->obs_index * 3,
+        integrate(f, col, obs_buffer + obs_count[col] * 3 + f->obs_index * 3,
                           integrations);
         compute_sigmas(f);
     }
     else if (filter_has_to_continue(f))
     {
-        printf("filter n%d did not match but continues\n", x);
+        // printf("filter n%d did not match but continues\n", x);
         for (int i = 0; i < 4; i++)
             f->S(i, 0) = f->S_predicted(i, 0);
     }
     else
     {
-        printf("filter n%d is dead\n", x);
+        // printf("filter n%d is dead\n", x);
         f->dead = true;
     }
     // for (int i = 0; i < nb_obs_in_col; i++)
@@ -423,7 +423,7 @@ int get_max(int* buffer, int size)
     return max;
 }
 
-void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_height, int nb_obs)
+std::vector<kalman::Segment> traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_height, int nb_obs)
 {
     cudaError_t rc = cudaSuccess;
 
@@ -445,7 +445,7 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     rc = cudaMalloc(&obs_buffer, nb_obs * sizeof(float) * 3);
     if (rc)
         abortError("Fail buffer alloc");
-    rc = cudaMalloc(&obs_count_buffer, width * sizeof(int));
+    rc = cudaMalloc(&obs_count_buffer, (width + 1) * sizeof(int));
     if (rc)
         abortError("Fail buffer alloc");
     rc = cudaMalloc(&obs_used_buffer, max_observations_col * sizeof(int));
@@ -473,7 +473,7 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
                 cudaMemcpyHostToDevice);
     if (rc)
         abortError("Cpy host to device fail");
-    rc = cudaMemcpy(obs_count_buffer, obsCount, width * sizeof(int),
+    rc = cudaMemcpy(obs_count_buffer, obsCount, (width + 1) * sizeof(int),
             cudaMemcpyHostToDevice);
     if (rc)
         abortError("Cpy host to device fail");
@@ -506,13 +506,15 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
         int bsize = 512;
         int h = std::ceil((float)nb_active_filters / (bsize));
 
-        std::cout << "running kernel of size " << h << std::endl;
+        // std::cout << "running kernel of size " << h << std::endl;
 
-        update_filters<<<h, bsize>>>(obs_buffer, obs_count_buffer, i,
-                                            nb_active_filters, filter_device_buffer,
-                                            integrations_device_buffer, integration_padding,
-                                            obs_used_buffer);
-
+        if (nb_active_filters != 0)
+        {
+            update_filters<<<h, bsize>>>(obs_buffer, obs_count_buffer, i,
+                                                nb_active_filters, filter_device_buffer,
+                                                integrations_device_buffer, integration_padding,
+                                                obs_used_buffer);
+        }
         
         // copy back obs_used_buffer, integrations_device_buffer, filter_device_buffer
 
@@ -534,7 +536,7 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
 
         for (int j = 0; j < nb_obs_in_col; j++)
         {
-            float* obs_ptr = obsHostBuffer + obsCount[i - 1] + j * 3;
+            float* obs_ptr = obsHostBuffer + obsCount[i] * 3 + j * 3;
             if (obs_used_host_buffer[j] == 0)
             {
                 filter_host_buffer[nb_active_filters] = Filter(obs_ptr[0],
@@ -578,4 +580,23 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
         abortError("Cuda Free fail");
 
 
+    std::vector<kalman::Segment> segments{};
+    
+    for (int i = 0; i < nb_active_filters; i++)
+    {
+        Filter f = filter_host_buffer[i];
+        if (f.nb_integration > 20)
+        {
+            std::vector<kalman::Point> pt_vec{};
+            for (int j = f.first_integration_col; j < f.first_integration_col + f.nb_integration; j++)
+            {
+                int integration_obs_id = integrations_host_buffer[i * width + j];
+                float* obs_ptr = obsHostBuffer + obsCount[j] * 3 + integration_obs_id * 3;
+                kalman::Point p = kalman::Point(obs_ptr[0], j, obs_ptr[1], true);
+                pt_vec.push_back(p);
+            }
+            segments.push_back(kalman::Segment(pt_vec, std::vector<kalman::Point>{}, 0, 0, true));
+        } 
+    }
+    return segments;
 }

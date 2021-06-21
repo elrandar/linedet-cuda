@@ -9,6 +9,8 @@
 #include "../include/segdet_batch.hpp"
 #include "../include/segdet_gpu.hpp"
 
+#include <iostream>
+
 int main(int argc, char *argv[])
 {
     using namespace kalman;
@@ -36,7 +38,6 @@ int main(int argc, char *argv[])
 
     kalman::image2d<uint8_t> img = parser.pgm(filename);
 
-
     if (mode == "--sequential")
     {
         std::cout << "Processing Image Sequentially\n";
@@ -46,12 +47,13 @@ int main(int argc, char *argv[])
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
         labeled_arr(lab_arr, out);
-     
+
         // Output
         lab_arr.imsave("out.pgm");
     }
     else if (mode == "--batch")
     {
+        /* OLD CODE
         std::cout << "Processing Image in batches, using CPU\n";
 
         auto out = kalman_batch::detect_line(img, 20, 0);
@@ -59,9 +61,23 @@ int main(int argc, char *argv[])
         // Image labellisation
         auto lab_arr = kalman::image2d<uint16_t>(img.width, img.height);
         labeled_arr(lab_arr, out);
-    
+
         // Output
         lab_arr.imsave("out.pgm");
+        */
+
+        // Doing the exact same thing as gpu does
+        std::cout << "USING CPU\n";
+        std::vector<std::vector<kMatrix<float>>> res;
+        auto parser = kalman::obs_parser();
+
+        for (auto i = 0u; i < 100; ++i)
+            res = parser.parse(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res[i].size() << " ";
+        std::cout << "\n";
     }
     else if (mode == "--gpu")
     {
@@ -99,9 +115,54 @@ int main(int argc, char *argv[])
         // Output
         lab_arr.imsave("out.pgm");
     }
+    else if (mode == "--gpu_obs")
+    {
+        std::cout << "USING GPU\n";
+        std::pair<obs_elem *, unsigned int*> res;
+
+        res = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res.second[i] << " ";
+        std::cout << "\n";
+
+        delete[] res.first;
+        delete[] res.second;
+    }
+    else if (mode == "--gpu2")
+    {
+        std::cout << "USING GPU\n";
+        auto stride = img.width * sizeof(uint8_t);
+        std::pair<obs_elem *, unsigned int*> res;
+
+        res = kalman::obs_parser::parse_gpu2(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res.second[i] << " ";
+        std::cout << "\n";
+
+        delete[] res.first;
+        delete[] res.second;
+    }
+    else if (mode == "--gpu3")
+    {
+        std::cout << "USING GPU\n";
+        std::pair<obs_elem *, unsigned int*> res;
+
+        res = kalman::obs_parser::parse_gpu3(img.width, img.height, img.get_buffer(), 245);
+
+        std::cout << "Sizes:\n";
+        for (auto i =0u; i < img.width; ++i)
+            std::cout << res.second[i] << " ";
+        std::cout << "\n";
+
+        delete[] res.first;
+        delete[] res.second;
+    }
     else
         throw std::invalid_argument("Unknown mode. Second argument can be '--parallel', '--gpu' or '--sequential'.");
 
-    
     return 0;
 }

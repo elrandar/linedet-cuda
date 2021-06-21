@@ -14,6 +14,13 @@ public:
     int nb_rows;
     int nb_cols;
 
+    kMatrix()
+    : buffer(std::vector<float>(3)),
+    nb_rows(3),
+    nb_cols(1)
+    {
+    }
+
     kMatrix(std::vector<T> buffer, int nb_rows, int nb_cols)
             : buffer(buffer), nb_rows(nb_rows),
               nb_cols(nb_cols)
@@ -75,7 +82,7 @@ template <typename T>
 kMatrix<T> invert_matrix3(const kMatrix<T> &mat)
 {
     auto inv_buf = invert_matrix(mat.buffer, 3);
-    return kMatrix(inv_buf, 3, 3);
+    return kMatrix<float>(inv_buf, 3, 3);
 }
 
 template <typename T>

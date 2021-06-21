@@ -27,7 +27,6 @@ add_executable(kalman-gpu
 target_compile_options(kalman-gpu PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
         --use_fast_math
         --relocatable-device-code=true
-        -G
         -rdynamic
         # -Xcompiler
         >)

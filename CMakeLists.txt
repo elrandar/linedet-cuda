@@ -16,7 +16,7 @@ set(CMAKE_BUILD_TYPE Debug)
 add_executable(kalman-gpu 
                 src/matrix_tools_gpu.cu
                 src/segdet_gpu.cu
-                src/observation_parser.cu
+                src/observation_parser.cu 
                 src/filter.cpp 
                 src/segdet.cpp
                 src/segdet_batch.cpp

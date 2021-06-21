@@ -1,12 +1,13 @@
 //
 // Created by alexandre on 02/04/2021.
 //
-
-#include "../include/filter.hpp"
+#include "../include/filter_batch.hpp"
 #include "../include/linearregression.hpp"
-#include <cmath>
+#include "../include/matrix_tools.hpp"
 #include <algorithm>
 #include <numeric>
+#include <cmath>
+
 
 #define SEGDET_MIN_NB_VALUES_SIGMA 10
 
@@ -14,7 +15,7 @@
 #define SEGDET_SIGMA_THK_MIN 0.64F
 #define SEGDET_SIGMA_LUM_MIN 13
 
-namespace kalman
+namespace kalman_batch
 {
 
   /**
@@ -104,7 +105,7 @@ namespace kalman
            accepts_sigma(f.X_predicted(2, 0), obs(2, 0), f.sigma_luminosity);
   }
 
-  std::optional<Observation> choose_nearest(Filter& f, Observation& obs)
+  std::optional<Observation> choose_nearest(Filter& f, Observation& obs, int obs_index)
   {
     auto X             = obs.obs;
     auto obs_to_return = std::make_optional(obs);
@@ -118,6 +119,7 @@ namespace kalman
       else
         obs_to_return = std::nullopt;
       f.observation          = obs;
+      f.observation_index = obs_index;
       f.observation_distance = distance;
     }
     return obs_to_return;
@@ -157,31 +159,32 @@ namespace kalman
    * @param observation The observation matrix to integrate
    * @param t The position at which the integration was made
    */
-  void insert_into_filters_list(Filter& f, const kMatrix<float>& observation, uint32_t t, Parameters params)
-  {
-      f.n_values.push_back(observation(0, 0));
-      f.thicknesses.push_back(observation(1, 0));
-      f.luminosities.push_back(observation(2, 0));
-      f.t_values.push_back(t);
-      f.slopes.push_back(compute_slope(f));
+//  void insert_into_filters_list(Filter& f, Eigen::Matrix<float, 3, 1> observation, uint32_t t, Parameters params)
+void insert_into_filters_list(Filter& f, const kMatrix<float>& observation, uint32_t t, Parameters params)
+{
+    f.n_values.push_back(observation(0, 0));
+    f.thicknesses.push_back(observation(1, 0));
+    f.luminosities.push_back(observation(2, 0));
+    f.t_values.push_back(t);
+    f.slopes.push_back(compute_slope(f));
 
-      if (f.n_values.size() > params.nb_values_to_keep)
-      {
-          auto thick = f.thicknesses[0];
-          auto nn    = f.n_values[0];
-          auto tt    = f.t_values[0];
+    if (f.n_values.size() > params.nb_values_to_keep)
+    {
+      auto thick = f.thicknesses[0];
+      auto nn    = f.n_values[0];
+      auto tt    = f.t_values[0];
 
-          f.thicknesses.erase(f.thicknesses.begin());
-          f.t_values.erase(f.t_values.begin());
-          f.n_values.erase(f.n_values.begin());
-          f.luminosities.erase(f.luminosities.begin());
-          f.slopes.erase(f.slopes.begin());
+      f.thicknesses.erase(f.thicknesses.begin());
+      f.t_values.erase(f.t_values.begin());
+      f.n_values.erase(f.n_values.begin());
+      f.luminosities.erase(f.luminosities.begin());
+      f.slopes.erase(f.slopes.begin());
 
-          if (f.first_slope == std::nullopt)
-              f.first_slope = std::make_optional(f.slopes[f.slopes.size() - 1]);
+      if (f.first_slope == std::nullopt)
+        f.first_slope = std::make_optional(f.slopes[f.slopes.size() - 1]);
 
-          f.segment_points.emplace_back(nn, tt, thick, f.is_horizontal);
-      }
+      f.segment_points.emplace_back(nn, tt, thick, f.is_horizontal);
+    }
   }
 
   void integrate(Filter& f, uint32_t t, Parameters params)
@@ -195,13 +198,14 @@ namespace kalman
       f.currently_under_other.clear();
     }
 
-      auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
-      f.S    = f.S_predicted + G * (observation - f.X_predicted);
-      auto id4 = kMatrix<float>({1, 0, 0, 0,
-                                  0, 1, 0, 0,
-                                  0, 0, 1, 0,
-                                  0, 0, 0, 1}, 4, 4);
-      f.H    = (id4 - G * C) * f.H;
+
+    auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
+    f.S    = f.S_predicted + G * (observation - f.X_predicted);
+    auto id4 = kMatrix<float>({1, 0, 0, 0,
+                                0, 1, 0, 0,
+                                0, 0, 1, 0,
+                                0, 0, 0, 1}, 4, 4);
+    f.H    = (id4 - G * C) * f.H;
 
     insert_into_filters_list(f, observation, t, params);
 

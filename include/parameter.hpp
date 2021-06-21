@@ -20,22 +20,22 @@ namespace kalman
         u_int32_t default_sigma_luminosity = 57;
 
         u_int32_t min_nb_values_sigma  = 10;
-        double    sigma_pos_min        = 1;
-        double    sigma_thickness_min  = 0.64;
-        double    sigma_luminosity_min = 13;
+        float    sigma_pos_min        = 1;
+        float    sigma_thickness_min  = 0.64;
+        float    sigma_luminosity_min = 13;
 
-        double    slope_max_vertical     = 1.05;
-        double    slope_max_horizontal   = 1.0;
+        float    slope_max_vertical     = 1.05;
+        float    slope_max_horizontal   = 1.0;
         u_int32_t max_llum               = 225;
         u_int32_t max_thickness          = 100;
-        double    ratio_lum              = 1;
-        double    merge_slope_variation  = 0.4;
-        double    merge_distance_max     = 8;
+        float    ratio_lum              = 1;
+        float    merge_slope_variation  = 0.4;
+        float    merge_distance_max     = 8;
         u_int32_t max_slopes_too_large   = 5;
-        double    threshold_intersection = 0.8;
+        float    threshold_intersection = 0.8;
         u_int32_t minimum_for_fusion     = 15;
 
-        explicit Parameters(const std::map<std::string, double>& map)
+        explicit Parameters(const std::map<std::string, float>& map)
         {
           for (auto& kvp : map)
           {

@@ -10,7 +10,6 @@ avant d'appeler cmake.
 
 Sur une machine debian :
 ```
-sudo apt install libeigen3-dev
 sudo apt install cmake
 mkdir build && cd build
 cmake ..
@@ -45,5 +44,3 @@ Pour colorer chaque label d'une couleur différente, on peut utiliser le script 
 ```
 python3 output_to_rgb.py <out_img>
 ```
-
-Si cmake veut pas accepter eigen en son coeur, faut juste re cmake; make dans le dossier d'eigen

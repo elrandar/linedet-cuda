@@ -81,23 +81,26 @@ int main(int argc, char *argv[])
     }
     else if (mode == "--gpu")
     {
-        auto p = obs_parser();
-        auto observations = p.parse(img.width, img.height, img.get_buffer_const(), 225);
+        std::pair<obs_elem*, unsigned int*> observations = kalman::obs_parser::parse_gpu(img.width, img.height, img.get_buffer(), 225);
         
         std::vector<float> observations_array{};
         std::vector<int> obs_per_col_array{0};
 
         int col_obs_sum = 0;
-        for (auto col : observations)
+        for (int i = 0; i < img.width; i++)
         {
-            for (auto obs : col)
-            {
-                col_obs_sum += 1;
-                observations_array.push_back(obs(0, 0));
-                observations_array.push_back(obs(1, 0));
-                observations_array.push_back(obs(2, 0));
-            }
+            col_obs_sum += observations.second[i];
             obs_per_col_array.push_back(col_obs_sum);
+        }
+
+        for (int i = 0; i < img.width; i++)
+        {
+            for (int j = 0; j < observations.second[i]; j++)
+            {
+                observations_array.push_back(observations.first[j * img.width + i].position);
+                observations_array.push_back(observations.first[j * img.width + i].thickness);
+                observations_array.push_back(observations.first[j * img.width + i].luminosity);
+            }
         }
 
         std::cout << "Processing Image in parallel, using GPU\n";

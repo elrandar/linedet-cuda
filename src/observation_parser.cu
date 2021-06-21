@@ -149,7 +149,7 @@ namespace kalman {
             auto bsize = 32; // Do not change this number, else program won't work
             int w = std::ceil(static_cast<float>(width) / bsize);
             int h = 1;
-            dim3 dimBlock(bsize, bsize);
+            dim3 dimBlock(bsize, 1);
             dim3 dimGrid(w, h);
 
             // - - - - - - ALGO - - - - - -

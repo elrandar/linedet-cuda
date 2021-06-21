@@ -101,11 +101,6 @@ __device__ void predict(Filter* f)
     kMatrix<float, 4, 4> A_transpose(a_t);
     float c[12] = {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     kMatrix<float, 3, 4> C(c);
-    float c_t[12] = {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1};
-    kMatrix<float, 4, 3> C_transpose(c_t);
-    float vn[9] = {2, 0, 0, 0,
-                   1, 0, 0, 0, 12};
-    kMatrix<float, 3, 3> Vn(vn);
 
     
     f->S_predicted = kMatrix<float, 4, 1>();
@@ -124,8 +119,9 @@ __device__ void predict(Filter* f)
     f->n_min = f->X_predicted(0, 0) - thik_d2;
     f->n_max = f->X_predicted(0, 0) + thik_d2;
 
-    matmul(f->H, A_transpose, f->H);
-    matmul(A, f->H, f->H);
+    kMatrix<float, 4, 4> tmp_mat{};
+    matmul(f->H, A_transpose, tmp_mat);
+    matmul(A, tmp_mat, f->H);
 
     // f.H = A * f.H * A_transpose;
 
@@ -133,6 +129,7 @@ __device__ void predict(Filter* f)
     f->W.buffer[1] = 0;
 
     f->obs_index = -1;
+    f->obs_distance = 10000000;
   }
 
 __device__  bool accepts_sigma(float prediction, float observation, float sigma)
@@ -256,20 +253,39 @@ __device__ void insert_into_filters_list(Filter* f, int* integrations, int col, 
         kMatrix<float, 3, 3> tmp_res_2{};
         matmul(C, tmp_res, tmp_res_2);
         add(tmp_res_2, Vn, tmp_res_2);
-        invert_matrix3(tmp_res_2, tmp_res_2);
 
-        matmul(C_transpose, tmp_res_2, tmp_res);
+        kMatrix<float, 3, 3> tmp_res_3{};
+    //     printf("integration : mat before invert is : \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n", 
+    // tmp_res_2(0,0), tmp_res_2(1,0), tmp_res_2(2,0),
+    // tmp_res_2(0,1), tmp_res_2(1,1), tmp_res_2(2,1),
+    // tmp_res_2(0,2), tmp_res_2(1,2), tmp_res_2(2,2));
+        invert_matrix3(tmp_res_2, tmp_res_3);
+    //             printf("integration : mat after invert is : \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n", 
+    // tmp_res_2(0,0), tmp_res_2(1,0), tmp_res_2(2,0),
+    // tmp_res_2(0,1), tmp_res_2(1,1), tmp_res_2(2,1),
+    // tmp_res_2(0,2), tmp_res_2(1,2), tmp_res_2(2,2));
+
+        matmul(C_transpose, tmp_res_3, tmp_res);
 
         matmul(f->H, tmp_res, G);
     } // auto G = f.H * C_transpose * invert_matrix3(C * f.H * C_transpose + Vn);
 
+    printf("integration : G value is\n%f, %f, %f, %f\n%f, %f, %f, %f\n%f, %f, %f, %f\n", 
+    G(0,0), G(1,0), G(2,0),G(3,0),G(0,1), G(1,1), G(2,1),G(3,1),G(0,2), G(1,2), G(2,2),G(3,2));
+
     {
         kMatrix<float, 3, 1> obs_diff{};
         subtract(observation, f->X_predicted, obs_diff);
+        printf("integration :\nobservation is %f, %f, %f, X_predicted is %f, %f, %f, so obs_diff is %f, %f, %f\n",
+        observation(0,0), observation(1,0), observation(2,0),
+        f->X_predicted(0,0),  f->X_predicted(1,0),  f->X_predicted(2,0), 
+        obs_diff(0,0), obs_diff(1,0), obs_diff(2,0));
+        
         matmul(G, obs_diff, f->S);
         add(f->S_predicted, f->S, f->S);
     } // f.S    = f.S_predicted + G * (observation - f.X_predicted);
 
+    printf("integration : new S value is %f, %f, %f, %f\n", f->S(0,0), f->S(1,0), f->S(2,0),f->S(3,0));
 
     {
         float id4_buf[16] = {1, 0, 0, 0,
@@ -328,6 +344,8 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
 
     int nb_obs_in_col = obs_count[col + 1] - obs_count[col];
 
+    if (x == 0)
+        printf("nb_obs_in_col : %d\n", nb_obs_in_col);
     if (x >= max_height)
         return;
 
@@ -340,14 +358,22 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
 
     predict(f);
 
-    // kalman_gpu::print(f->S);
-    // kalman_gpu::print(f->X);
-
     for (int i = 0; i < nb_obs_in_col; i++)
     {
-        float* obs_ptr = obs_buffer + obs_count[col - 1] + i * 3;
+        if (x == 0)
+        {
+            printf("obs offset is %d * 3 + %d * 3\n", obs_count[col - 1], i);
+        }
+        float* obs_ptr = obs_buffer + obs_count[col - 1] * 3 + i * 3;
+
         bool accepted = find_match(f, obs_ptr);
 
+        if (x == 0)
+        {
+            printf("Trying to match filter with prediction %f, %f, %f with observation %f, %f, %f. Accepted = %d\n",
+            f->S_predicted(0,0), f->S_predicted(1,0),f->S_predicted(2,0),
+            obs_ptr[0], obs_ptr[1], obs_ptr[2], accepted);
+        }
         if (accepted)
         {
             choose_nearest(f, obs_ptr, i);
@@ -357,19 +383,22 @@ __global__ void update_filters(float* obs_buffer, int* obs_count, int col, int m
     
     if (f->obs_index != -1)
     {
+        printf("filter n%d matched with obs n%d\n", x, f->obs_index);
         // set obs matched in obs match array
         obs_used_buffer[f->obs_index] = 1;
-        integrate(f, col, obs_buffer + obs_count[col - 1] + f->obs_index * 3,
+        integrate(f, col, obs_buffer + obs_count[col - 1] * 3 + f->obs_index * 3,
                           integrations);
         compute_sigmas(f);
     }
     else if (filter_has_to_continue(f))
     {
+        printf("filter n%d did not match but continues\n", x);
         for (int i = 0; i < 4; i++)
             f->S(i, 0) = f->S_predicted(i, 0);
     }
     else
     {
+        printf("filter n%d is dead\n", x);
         f->dead = true;
     }
     // for (int i = 0; i < nb_obs_in_col; i++)

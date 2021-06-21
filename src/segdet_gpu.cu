@@ -1,5 +1,6 @@
-#include "test_gpu.hpp"
+#include "segdet_gpu.hpp"
 #include "matrix_tools_gpu.cuh"
+#include "segment.hpp"
 
 // #include "segment_gpu.cuh"
 #include <cassert>
@@ -575,4 +576,6 @@ void traversal_gpu(float* obsHostBuffer, int* obsCount, int width, int max_heigh
     rc = cudaFree(integrations_device_buffer);
     if (rc)
         abortError("Cuda Free fail");
+
+
 }

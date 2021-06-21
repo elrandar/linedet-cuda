@@ -7,7 +7,7 @@
 #include "../include/observation_parser.hh"
 #include "../include/matrix_tools.hpp"
 #include "../include/segdet_batch.hpp"
-#include "../include/test_gpu.hpp"
+#include "../include/segdet_gpu.hpp"
 
 int main(int argc, char *argv[])
 {

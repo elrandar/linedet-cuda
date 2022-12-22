@@ -1,14 +1,14 @@
 # kalman-filter-gpu
 
-## Compiler le code
+## Compiling
 
-Il se peut que la version 10 de g++ soit requise.
+This code requires `g++` version `10`.
 ```
 export CXX=/usr/local/bin/g++-10
 ```
-avant d'appeler cmake.
+Before calling `cmake`.
 
-Sur une machine debian :
+On a debian computer:
 ```
 sudo apt install cmake
 mkdir build && cd build
@@ -16,17 +16,17 @@ cmake ..
 make
 ```
 
-## Utilisation
+## Usage
 
-Les images données en entrée au programme sont des images .PGM ASCII (P2) de uint8 (0 - 255).
+Input images are `uint8` .PGM ASCII (P2), Range is (0 - 255). 
 
-Il est possible de convertir n'importe quel fichier image dans ce format grâce à `ImageMagick` avec la commande :
+Using `ImageMagick`, it is possible to convert an image in this format using the following command:
 
 ```
 convert <img_path> -colorspace Gray -compress none <out_path>.pgm
 ```
 
-Le programme s'utilise de la façon suivante :
+The tool is used in the following manner:
 
 ```
 ./kalman-gpu [mode] <imagepath>
@@ -34,13 +34,12 @@ Le programme s'utilise de la façon suivante :
 
 **Modes :**
 
-- `--gpu`     active le mode parallèle GPU
-- `--batch` active le mode batch CPU
-- `--sequential` active le mode séquentiel CPU
+- `--gpu`     activate GPU mode
+- `--batch` activate batch CPU mode (CPU mode emulating GPU)
+- `--sequential` activate sequential CPU mode (Original implementation)
 
-La sortie est une image de labels au format .PGM dans le fichier `out.pgm`.\
-Pour colorer chaque label d'une couleur différente, on peut utiliser le script fourni :
-
+The output is a label image in the `.PGM` format. It is stored in the `out.pgm` file.\
+To display the output using python, the following script can be used :
 ```
 python3 output_to_rgb.py <out_img>
 ```
